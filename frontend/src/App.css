@@ -1,0 +1,316 @@
+/* Fonts & Icons */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&display=swap');
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
+
+/* Reset & globals */
+* { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0; 
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(to bottom, #8BC34A, #C8E6C9);
+  color: #4B5D52;
+}
+
+button { 
+  background: none; 
+  border: none; 
+  cursor: pointer; 
+}
+
+.App {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* Top status bar */
+.status-bar {
+  display: flex; 
+  align-items: center; 
+  gap: 24px;
+  background: #2c2f33; 
+  color: #e8f5e9; 
+  font-size: 0.9rem;
+  padding: 6px 16px;
+}
+
+.status-bar .status-logo {
+  height: 24px;
+  width: auto;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.status-bar .status-indicator { 
+  color: #f44336; 
+  font-size: 0.6rem; 
+}
+
+.status-bar select {
+  background: #2c2f33; 
+  border: 1px solid #e8f5e9;
+  color: #e8f5e9; 
+  padding: 2px 6px; 
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.status-bar .icon-btn { 
+  color: #e8f5e9; 
+  font-size: 1rem; 
+}
+
+/* Header */
+header {
+  display: flex; 
+  align-items: center;
+  background-color: #388E3C; 
+  padding: 16px 24px;
+}
+
+header .logo {
+  height: 64px; 
+  margin-right: 12px;
+}
+
+header .title {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700; 
+  font-size: 2rem;
+  background: linear-gradient(to bottom,
+    #1B5E20 0%,
+    #81C784 50%,
+    #FFFFFF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow:
+    0 -1px 1px rgba(255,255,255,0.6),
+    0 2px 4px rgba(0,0,0,0.4);
+}
+
+/* Chat area */
+.container {
+  flex: 1; 
+  display: flex; 
+  overflow: hidden;
+}
+
+.chat-container {
+  flex: 1; 
+  display: flex; 
+  flex-direction: column;
+  padding: 16px; 
+  overflow-y: auto;
+}
+
+/* Hide browser dev tools resize handles and unwanted drag elements */
+.container *[class*="devtools"],
+.container *[class*="resize"],
+.container *[class*="drag"],
+.container *[class*="splitter"],
+.container *[style*="cursor: col-resize"],
+.container *[style*="cursor: ew-resize"] {
+  display: none !important;
+}
+
+/* Force any remaining resize elements to the right */
+.container::before,
+.container::after {
+  display: none !important;
+}
+
+/* Override any browser-injected styles that create drag bars */
+* {
+  resize: none !important;
+}
+
+/* Specifically target gray vertical lines */
+.container div[style*="background-color: rgb(204, 204, 204)"],
+.container div[style*="background-color: #ccc"],
+.container div[style*="background-color: #ddd"],
+.container div[style*="background: rgb(204, 204, 204)"],
+.container div[style*="background: #ccc"],
+.container div[style*="background: #ddd"] {
+  display: none !important;
+}
+
+/* Messages */
+.message {
+  max-width: 70%; 
+  margin-bottom: 12px;
+  display: flex;
+  align-items: flex-start;
+}
+
+.message.user { 
+  align-self: flex-end; 
+  flex-direction: row;
+}
+
+.message.ai {
+  align-self: flex-start;
+  display: flex; 
+  align-items: flex-start;
+  flex-direction: row;
+}
+
+.ai-small-logo {
+  width: 28px; 
+  margin-right: 8px; 
+  flex-shrink: 0;
+}
+
+/* User icon container for proper vertical alignment */
+.user-icon-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+/* User icon styling for human messages */
+.user-icon {
+  width: 24px; 
+  height: 24px;
+  flex-shrink: 0;
+  color: #4CAF50 !important;
+  font-size: 18px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  background: rgba(76, 175, 80, 0.1);
+  border-radius: 50%;
+  border: 1px solid #4CAF50;
+  margin-bottom: 4px; /* Small gap between icon and timestamp */
+}
+
+.user-icon-container .timestamp {
+  font-size: 0.7rem; 
+  color: #555;
+  opacity: 0.8;
+  text-align: center;
+  margin: 0; /* Remove any default margin */
+}
+
+/* General timestamp styling for timestamps under chat bubbles */
+.timestamp {
+  font-size: 0.7rem; 
+  color: #555;
+  opacity: 0.8;
+  margin-top: 4px;
+  text-align: right; /* Align timestamps to the right under user bubbles */
+}
+
+/* AI message timestamps should align left */
+.message.ai .timestamp {
+  text-align: left;
+}
+
+/* User message timestamps should align right */
+.message.user .timestamp {
+  text-align: right;
+}
+
+.bubble {
+  background-color: rgba(255,255,255,0.8);
+  border: 2px solid #388E3C;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 0.95rem; 
+  line-height: 1.4;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.message.ai .bubble {
+  color: #76FF03; /* Bright lime green for AI text */
+  -webkit-text-stroke: 0.5px #2E7D32; /* Dark green stroke for contrast */
+}
+
+.message.user .bubble {
+  color: #2E7D32; /* Slightly green color for user text */
+  -webkit-text-stroke: 0.5px #1B5E20;
+}
+
+/* Attachments (transparent background, dark green border) */
+.attachments {
+  display: flex; 
+  flex-wrap: wrap; 
+  gap: 8px;
+  padding: 8px 16px;
+}
+
+.attachment {
+  display: flex; 
+  align-items: center; 
+  gap: 6px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 2px solid #388E3C;
+  border-radius: 8px;
+  color: #2B3A2B;
+  font-size: 0.9rem;
+}
+
+.attachment .thumb {
+  width: 32px; 
+  height: 32px;
+  object-fit: cover; 
+  border-radius: 4px;
+  border: 1px solid #388E3C;
+}
+
+.attachment .remove {
+  background: none; 
+  border: none;
+  color: #2B3A2B; 
+  font-size: 1rem;
+  cursor: pointer; 
+  margin-left: 6px;
+}
+
+/* Input bar (medium gray) */
+.input-bar {
+  background: #3a3a3a;
+  display: flex; 
+  align-items: center;
+  padding: 8px 16px;
+  border-top: 2px solid #388E3C;
+  gap: 8px;
+}
+
+.input-bar .icon-btn {
+  color: #e8e8e8; 
+  font-size: 1.2rem; 
+  padding: 0 8px;
+}
+
+.input-bar input {
+  flex: 1; 
+  padding: 10px 12px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  font-size: 1rem;
+  background: #2c2c2c;
+  color: #e0e0e0;
+}
+
+.input-bar input::placeholder {
+  color: #888;
+}
+
+/* User message content container (bubble + timestamp) should stack vertically */
+.message.user > div:not(.user-icon-container) {
+  display: flex;
+  flex-direction: column;
+}
