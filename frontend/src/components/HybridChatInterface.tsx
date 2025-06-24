@@ -60,6 +60,9 @@ const HybridChatInterface: React.FC = () => {
   
   // File cache for immediate thumbnail display
   const [fileCache, setFileCache] = useState<Map<string, string>>(new Map());
+  
+  // Track thumbnail message IDs by filename to avoid duplicates
+  const [thumbnailMessages, setThumbnailMessages] = useState<Map<string, string>>(new Map());
 
   // Speech integration
   const {
@@ -239,26 +242,59 @@ const HybridChatInterface: React.FC = () => {
       
       // Cache the preview URL
       setFileCache(prev => new Map(prev.set(file.name, previewUrl)));
+      
+      // Check if we already have a thumbnail message for this file
+      const existingMessageId = thumbnailMessages.get(file.name);
+      let messageId = Date.now().toString();
+      
+      if (existingMessageId) {
+        // Update existing message instead of creating a new one
+        setMessages(prev => prev.map(msg => {
+          if (msg.id === existingMessageId) {
+            return {
+              ...msg,
+              timestamp: new Date().toISOString(),
+              component: (
+                <SystemMessageWithThumbnail 
+                  file={{
+                    filename: file.name,
+                    type: file.type,
+                    previewUrl: previewUrl,
+                    size: file.size,
+                    isLoading: true // Show loading state
+                  }}
+                />
+              )
+            };
+          }
+          return msg;
+        }));
+        messageId = existingMessageId;
+      } else {
+        // Add system message with thumbnail immediately (with loading state)
+        const systemMessage: Message = {
+          id: messageId,
+          role: 'system',
+          content: '',
+          timestamp: new Date().toISOString(),
+          component: (
+            <SystemMessageWithThumbnail 
+              file={{
+                filename: file.name,
+                type: file.type,
+                previewUrl: previewUrl,
+                size: file.size,
+                isLoading: true // Show loading state
+              }}
+            />
+          )
+        };
 
-      // Add system message with thumbnail immediately
-      const systemMessage: Message = {
-        id: Date.now().toString(),
-        role: 'system',
-        content: '',
-        timestamp: new Date().toISOString(),
-        component: (
-          <SystemMessageWithThumbnail 
-            file={{
-              filename: file.name,
-              type: file.type,
-              previewUrl: previewUrl,
-              size: file.size
-            }}
-          />
-        )
-      };
-
-      setMessages(prev => [...prev, systemMessage]);
+        setMessages(prev => [...prev, systemMessage]);
+        
+        // Track this message ID for this filename to avoid duplicates
+        setThumbnailMessages(prev => new Map(prev.set(file.name, messageId)));
+      }
 
       // Upload to backend
       const response = await apiService.uploadFile(file) as UploadResponse;
@@ -279,6 +315,30 @@ const HybridChatInterface: React.FC = () => {
         
         // Auto-select the uploaded document for next message
         setSelectedDocuments([response.file_id]);
+        
+        // Find and update the thumbnail message to remove loading state
+        const messageId = thumbnailMessages.get(file.name);
+        if (messageId) {
+          setMessages(prev => prev.map(msg => {
+            if (msg.id === messageId) {
+              return {
+                ...msg,
+                component: (
+                  <SystemMessageWithThumbnail 
+                    file={{
+                      filename: file.name,
+                      type: file.type,
+                      previewUrl: fileCache.get(file.name),
+                      size: file.size,
+                      isLoading: false // Remove loading state
+                    }}
+                  />
+                )
+              };
+            }
+            return msg;
+          }));
+        }
 
         toast.success(`File uploaded successfully: ${file.name}`);
       }
@@ -291,19 +351,40 @@ const HybridChatInterface: React.FC = () => {
     }
   };
 
-  const toggleRecording = () => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
-  };
+  // toggleRecording function moved below to avoid duplicate declaration
 
   const toggleSpeech = () => {
     if (isSpeaking) {
       stopSpeaking();
     }
   };
+  
+  // Toggle voice recording on/off
+  const toggleRecording = () => {
+    console.log('Toggling recording state:', isRecording ? 'stopping' : 'starting');
+    try {
+      if (isRecording) {
+        stopRecording();
+        toast.success('Voice recording stopped');
+      } else {
+        // Request microphone permissions first
+        navigator.mediaDevices.getUserMedia({ audio: true })
+          .then(() => {
+            startRecording();
+            toast.success('Voice recording started');
+          })
+          .catch(err => {
+            console.error('Microphone permission error:', err);
+            toast.error(`Microphone access denied: ${err.message}`);
+          });
+      }
+    } catch (error) {
+      console.error('Speech toggling error:', error);
+      toast.error(`Speech error: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+
 
   return (
     <div className="App">
@@ -315,14 +396,19 @@ const HybridChatInterface: React.FC = () => {
         <span>Auto-Speak: <i className={`fas ${autoSpeak ? 'fa-toggle-on' : 'fa-toggle-off'}`}></i></span>
         <span>
           Speech Engine:
-          <select>
-            <option>Native API</option>
+          <select onChange={(e) => setUseAzureSpeech(e.target.value === 'Azure')} value={useAzureSpeech ? 'Azure' : 'Native'}>
+            <option value="Native">Native API</option>
+            <option value="Azure">Azure API</option>
           </select>
         </span>
-        <button className="icon-btn" onClick={toggleRecording}>
+        <button 
+          className={`icon-btn ${isRecording ? 'active-mic' : ''}`} 
+          onClick={toggleRecording} 
+          title={isRecording ? 'Stop recording' : 'Start recording'}
+        >
           <i className={`fas ${isRecording ? 'fa-microphone' : 'fa-microphone-slash'}`}></i>
         </button>
-        <button className="icon-btn" onClick={() => setAutoSpeak(!autoSpeak)}>
+        <button className={`icon-btn ${autoSpeak ? 'active-speaker' : ''}`} onClick={() => setAutoSpeak(!autoSpeak)}>
           <i className={`fas ${autoSpeak ? 'fa-volume-up' : 'fa-volume-off'}`}></i>
         </button>
         <VoiceSelector
@@ -432,14 +518,36 @@ const HybridChatInterface: React.FC = () => {
         <button className="icon-btn">
           <i className="fas fa-paperclip"></i>
         </button>
-        <button className="icon-btn" onClick={toggleRecording}>
+        <button className={`icon-btn ${isRecording ? 'active-mic' : ''}`} onClick={toggleRecording}>
           <i className={`fas ${isRecording ? 'fa-microphone' : 'fa-microphone-slash'}`}></i>
         </button>
         <ChatInput
           onSendMessage={handleSendMessage}
           onFileUpload={handleFileUpload}
-          disabled={isLoading || isUploading}
+          onVoiceRecording={toggleRecording}
           isLoading={isLoading}
+          disabled={!isConnected}
+          isRecording={isRecording}
+          isUploading={isUploading}
+          pendingUploads={[
+            ...uploadedDocuments.map(doc => ({
+              id: doc.id,
+              name: doc.filename,
+              type: doc.type,
+              size: doc.size,
+              file: new File([], doc.filename, { type: doc.type }),
+              status: isUploading ? ('uploading' as const) : ('completed' as const)
+            })),
+            ...(isUploading ? [{
+              id: 'uploading',
+              name: uploadProgress || 'Uploading...',
+              type: 'uploading',
+              size: 0,
+              file: new File([], 'uploading'),
+              status: 'uploading' as const,
+              progress: 50
+            }] : [])
+          ]}
           uploadProgress={uploadProgress}
         />
         <button className="icon-btn">

@@ -295,6 +295,20 @@ header .title {
   padding: 0 8px;
 }
 
+.input-bar .icon-btn.active-mic,
+.status-bar .icon-btn.active-mic {
+  background-color: #4CAF50;
+  color: white;
+  box-shadow: 0 0 5px rgba(76, 175, 80, 0.7);
+}
+
+.input-bar .icon-btn.active-speaker,
+.status-bar .icon-btn.active-speaker {
+  background-color: #2196F3;
+  color: white;
+  box-shadow: 0 0 5px rgba(33, 150, 243, 0.7);
+}
+
 .input-bar input {
   flex: 1; 
   padding: 10px 12px;

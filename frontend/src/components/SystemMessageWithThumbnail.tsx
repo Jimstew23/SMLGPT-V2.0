@@ -6,6 +6,7 @@ interface UploadedFile {
   previewUrl?: string;
   blobUrl?: string;
   size?: number;
+  isLoading?: boolean;
 }
 
 interface SystemMessageWithThumbnailProps {
@@ -13,6 +14,7 @@ interface SystemMessageWithThumbnailProps {
 }
 
 const SystemMessageWithThumbnail: React.FC<SystemMessageWithThumbnailProps> = ({ file }) => {
+  const isLoading = file.isLoading ?? false;
   const formatFileSize = (bytes?: number) => {
     if (!bytes) return '';
     const sizes = ['B', 'KB', 'MB', 'GB'];
@@ -37,7 +39,7 @@ const SystemMessageWithThumbnail: React.FC<SystemMessageWithThumbnailProps> = ({
         <span className="text-green-500 text-2xl mt-0.5">✅</span>
         <div className="text-sm text-gray-700 flex-1">
           <p className="font-medium text-gray-800">
-            Your file <strong className="text-blue-600">{file.filename}</strong> is uploaded and ready.
+            Your file <strong className="text-blue-600">{file.filename}</strong> is {isLoading ? 'being processed' : 'uploaded and ready'}.
           </p>
           <p className="text-gray-600 mt-1">
             What would you like me to do with it?
@@ -58,10 +60,13 @@ const SystemMessageWithThumbnail: React.FC<SystemMessageWithThumbnailProps> = ({
             <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 text-white text-xs p-1 rounded-b-lg">
               {formatFileSize(file.size)}
             </div>
+            {isLoading && (
+              <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-blue-500 border-2 border-white animate-pulse" title="Processing file..."></div>
+            )}
           </div>
         ) : (
           // Document-style preview with icon and metadata
-          <div className="flex items-center space-x-3 border-2 border-gray-200 rounded-lg p-3 bg-white shadow-sm hover:shadow-md transition-shadow w-max">
+          <div className="relative flex items-center space-x-3 border-2 border-gray-200 rounded-lg p-3 bg-white shadow-sm hover:shadow-md transition-shadow w-max">
             <div className="text-3xl">{getFileIcon(file.type)}</div>
             <div className="flex flex-col">
               <span className="text-sm font-medium text-gray-800 max-w-48 truncate">
@@ -71,6 +76,9 @@ const SystemMessageWithThumbnail: React.FC<SystemMessageWithThumbnailProps> = ({
                 {formatFileSize(file.size)} • {file.type.split('/')[1]?.toUpperCase() || 'FILE'}
               </span>
             </div>
+            {isLoading && (
+              <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-blue-500 border-2 border-white animate-pulse" title="Processing file..."></div>
+            )}
           </div>
         )}
       </div>

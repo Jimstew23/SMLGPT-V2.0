@@ -133,13 +133,33 @@ app.post('/api/speech/recognize', upload.single('audio'), async (req, res) => {
       return res.status(400).json({ error: 'No audio file provided' });
     }
     
-    const result = await azureServices.speechToText(req.file.buffer);
+    // Detect audio format based on mimetype or filename extension
+    let format = 'wav'; // Default format
+    
+    if (req.file.mimetype) {
+      if (req.file.mimetype.includes('mp3')) {
+        format = 'mp3';
+      } else if (req.file.mimetype.includes('wav') || req.file.mimetype.includes('audio/wav')) {
+        format = 'wav';
+      }
+    } else if (req.file.originalname) {
+      if (req.file.originalname.toLowerCase().endsWith('.mp3')) {
+        format = 'mp3';
+      } else if (req.file.originalname.toLowerCase().endsWith('.wav')) {
+        format = 'wav';
+      }
+    }
+    
+    logger.info(`Speech recognition request with ${format} format`);
+    
+    // Pass detected format to the speech-to-text service
+    const result = await azureServices.speechToText(req.file.buffer, 'en-US', format);
     
     res.json({ text: result });
   } catch (error) {
     console.error('[ERROR] /api/speech/recognize threw:', error);
     logger.error('Speech recognition error:', error);
-    res.status(500).json({ error: error.message, stack: error.stack });
+    res.status(500).json({ error: error.message });
   }
 });
 

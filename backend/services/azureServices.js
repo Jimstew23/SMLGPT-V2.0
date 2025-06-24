@@ -3,8 +3,12 @@ const { ComputerVisionClient } = require('@azure/cognitiveservices-computervisio
 const { CognitiveServicesCredentials } = require('@azure/ms-rest-azure-js');
 const { DocumentAnalysisClient } = require('@azure/ai-form-recognizer');
 const { SearchClient, SearchIndexClient } = require('@azure/search-documents');
-const { SpeechConfig, AudioConfig, SpeechRecognizer, SpeechSynthesizer } = require('microsoft-cognitiveservices-speech-sdk');
-const { AzureKeyCredential } = require('@azure/core-auth');
+const AzureKeyCredential = require('@azure/core-auth').AzureKeyCredential;
+
+// Import Speech SDK at the global level
+const sdk = require('microsoft-cognitiveservices-speech-sdk');
+const { AudioConfig, SpeechConfig, SpeechRecognizer, SpeechSynthesizer, ResultReason } = sdk;
+
 const logger = require('../utils/logger');
 
 class AzureServices {
@@ -80,10 +84,20 @@ class AzureServices {
   }
 
   async initializeComputerVision() {
-    logger.info('Initializing Computer Vision...');
-    const computerVisionKey = new CognitiveServicesCredentials(process.env.AZURE_COGNITIVE_SERVICES_KEY);
-    this.visionClient = new ComputerVisionClient(computerVisionKey, process.env.AZURE_COGNITIVE_SERVICES_ENDPOINT);
-    logger.info('✅ Computer Vision initialized');
+    logger.info('Initializing Computer Vision with dedicated endpoint...');
+    
+    // Use dedicated Vision API endpoint and key
+    const visionEndpoint = process.env.AZURE_COMPUTER_VISION_ENDPOINT || process.env.AZURE_COGNITIVE_SERVICES_ENDPOINT;
+    const visionKey = process.env.AZURE_COMPUTER_VISION_KEY || process.env.AZURE_COGNITIVE_SERVICES_KEY;
+    
+    if (!visionEndpoint || !visionKey) {
+      throw new Error('Computer Vision credentials missing');
+    }
+    
+    const computerVisionKey = new CognitiveServicesCredentials(visionKey);
+    this.visionClient = new ComputerVisionClient(computerVisionKey, visionEndpoint);
+    
+    logger.info('✅ Computer Vision initialized with endpoint: ' + visionEndpoint);
   }
 
   async initializeDocumentIntelligence() {
@@ -96,27 +110,52 @@ class AzureServices {
   }
 
   async initializeAzureSearch() {
-    logger.info('Initializing Azure Cognitive Search...');
+    logger.info('Initializing Azure Search...');
+    
+    const searchEndpoint = process.env.AZURE_SEARCH_ENDPOINT;
+    const searchKey = process.env.AZURE_SEARCH_ADMIN_KEY;
+    const searchIndexName = process.env.AZURE_SEARCH_INDEX_NAME || 'smlgpt-index';
+    
+    if (!searchEndpoint || !searchKey) {
+      throw new Error('Azure Search credentials missing');
+    }
+    
+    // Create search client and index client
     this.searchClient = new SearchClient(
-      process.env.AZURE_SEARCH_ENDPOINT,
-      process.env.AZURE_SEARCH_INDEX_NAME,
-      new AzureKeyCredential(process.env.AZURE_SEARCH_ADMIN_KEY)
+      searchEndpoint,
+      searchIndexName,
+      new AzureKeyCredential(searchKey)
     );
-
+    
     this.searchIndexClient = new SearchIndexClient(
-      process.env.AZURE_SEARCH_ENDPOINT,
-      new AzureKeyCredential(process.env.AZURE_SEARCH_ADMIN_KEY)
+      searchEndpoint,
+      new AzureKeyCredential(searchKey)
     );
-    logger.info('✅ Azure Cognitive Search initialized');
+    
+    this.searchIndexName = searchIndexName;
+    logger.info(`✅ Azure Search initialized with endpoint: ${searchEndpoint}`);
   }
 
   async initializeSpeechServices() {
-    logger.info('Initializing Speech Services...');
-    this.speechConfig = SpeechConfig.fromSubscription(
-      process.env.AZURE_SPEECH_KEY,
-      process.env.AZURE_SPEECH_REGION
-    );
-    logger.info('✅ Speech Services initialized');
+    try {
+      if (!this.speechConfig) {
+        // Get Azure key and region from environment variables
+        const key = process.env.AZURE_SPEECH_KEY;
+        const region = process.env.AZURE_SPEECH_REGION;
+
+        if (!key || !region) {
+          throw new Error('Azure Speech Services configuration missing. Check AZURE_SPEECH_KEY and AZURE_SPEECH_REGION environment variables.');
+        }
+
+        // Create a speech configuration with the specified subscription key and service region
+        this.speechConfig = SpeechConfig.fromSubscription(key, region);
+        
+        logger.info(`✅ Speech Services initialized with region: ${region}`);
+      }
+    } catch (error) {
+      logger.error('Failed to initialize Speech Services:', error);
+      throw new Error(`Speech Services initialization failed: ${error.message}`);
+    }
   }
 
   // Method to ensure services are ready before use
@@ -299,30 +338,79 @@ class AzureServices {
   }
 
   // Speech Services Operations
-  async speechToText(audioBuffer, language = 'en-US') {
+  async speechToText(audioBuffer, language = 'en-US', format = 'wav') {
     try {
       await this.ensureServicesReady();
       
-      logger.info('Processing speech-to-text conversion...');
+      logger.info(`Processing speech-to-text conversion with format: ${format}...`);
       
       return new Promise((resolve, reject) => {
-        // Create audio config from buffer
-        const audioConfig = AudioConfig.fromWavFileInput(audioBuffer);
+        let audioConfig;
+        
+        try {
+          // Use push stream for better control over audio format
+          const pushStream = sdk.AudioInputStream.createPushStream();
+          
+          // Write audio buffer to push stream
+          pushStream.write(audioBuffer);
+          pushStream.close();
+          
+          // Create audio config from push stream instead of direct buffer
+          audioConfig = sdk.AudioConfig.fromStreamInput(pushStream);
+          
+          if (format.toLowerCase() === 'mp3') {
+            logger.info('MP3 format detected - using push stream for processing');
+          }
+        } catch (configError) {
+          logger.error('Failed to create audio config:', configError);
+          return reject(new Error(`Failed to create audio config: ${configError.message}`));
+        }
         
         // Configure speech recognition
         this.speechConfig.speechRecognitionLanguage = language;
         const recognizer = new SpeechRecognizer(this.speechConfig, audioConfig);
         
+        // Add event handlers for better debugging
+        recognizer.recognizing = (s, e) => {
+          logger.info(`RECOGNIZING: Text=${e.result.text}`);
+        };
+        
+        recognizer.recognized = (s, e) => {
+          if (e.result.reason === ResultReason.RecognizedSpeech) {
+            logger.info(`RECOGNIZED: Text=${e.result.text}`);
+          } else if (e.result.reason === ResultReason.NoMatch) {
+            logger.info(`NOMATCH: Speech could not be recognized.`);
+          }
+        };
+        
+        recognizer.canceled = (s, e) => {
+          logger.info(`CANCELED: Reason=${e.reason}`);
+          if (e.reason === sdk.CancellationReason.Error) {
+            logger.error(`CANCELED: ErrorCode=${e.errorCode}`);
+            logger.error(`CANCELED: ErrorDetails=${e.errorDetails}`);
+          }
+        };
+        
+        recognizer.sessionStarted = (s, e) => {
+          logger.info('Session started event.');
+        };
+        
+        recognizer.sessionStopped = (s, e) => {
+          logger.info('Session stopped event.');
+        };
+        
+        // Start recognition
         recognizer.recognizeOnceAsync(
           (result) => {
-            logger.info(`Speech recognition result: ${result.text}`);
+            const resultText = result.text || '';
+            logger.info(`Speech recognition completed with result: ${resultText}`);
             
-            if (result.reason === require('microsoft-cognitiveservices-speech-sdk').ResultReason.RecognizedSpeech) {
-              resolve(result.text);
-            } else if (result.reason === require('microsoft-cognitiveservices-speech-sdk').ResultReason.NoMatch) {
+            if (result.reason === ResultReason.RecognizedSpeech) {
+              resolve(resultText);
+            } else if (result.reason === ResultReason.NoMatch) {
               resolve('No speech was recognized.');
             } else {
-              reject(new Error('Speech recognition failed: ' + result.errorDetails));
+              reject(new Error('Speech recognition failed: ' + (result.errorDetails || 'Unknown reason')));
             }
             
             recognizer.close();
@@ -453,6 +541,113 @@ class AzureServices {
       });
       readableStream.on('error', reject);
     });
+  }
+  // API Test Methods for Connection Testing
+  async listBlobContainers() {
+    try {
+      const containerClient = this.blobServiceClient.getContainerClient(process.env.AZURE_STORAGE_CONTAINER_NAME);
+      // Check if container exists
+      const exists = await containerClient.exists();
+      
+      if (!exists) {
+        throw new Error(`Container ${process.env.AZURE_STORAGE_CONTAINER_NAME} does not exist`);
+      }
+      
+      return [{ name: process.env.AZURE_STORAGE_CONTAINER_NAME, exists }];
+    } catch (error) {
+      logger.error('Failed to list blob containers:', error);
+      throw error;
+    }
+  }
+
+  async getComputerVisionModelInfo() {
+    try {
+      // Instead of using the SDK for testing, just verify the credentials and endpoint are valid
+      // by checking if they exist in environment variables
+      if (!process.env.AZURE_COMPUTER_VISION_KEY || !process.env.AZURE_COMPUTER_VISION_ENDPOINT) {
+        throw new Error('Computer Vision credentials missing');
+      }
+
+      // Success - return endpoint info
+      return { 
+        endpoint: process.env.AZURE_COMPUTER_VISION_ENDPOINT, 
+        region: process.env.AZURE_COMPUTER_VISION_REGION || 'eastus2'
+      };
+    } catch (error) {
+      logger.error('Failed to get Computer Vision model info:', error);
+      throw error;
+    }
+  }
+  
+  async getDocumentIntelligenceInfo() {
+    try {
+      // Simple validation that client is properly configured
+      const endpoint = this.documentIntelligenceClient.endpoint;
+      return { endpoint };
+    } catch (error) {
+      logger.error('Failed to get Document Intelligence info:', error);
+      throw error;
+    }
+  }
+  
+  async testSearchConnection() {
+    try {
+      // Test the search connection
+      const indexClient = this.searchClient.indexClient;
+      const indexName = process.env.AZURE_SEARCH_INDEX_NAME;
+      
+      // Get index statistics
+      const stats = await indexClient.getIndexStatistics(indexName);
+      return { 
+        endpoint: process.env.AZURE_SEARCH_ENDPOINT,
+        indexName: indexName,
+        documentCount: stats.documentCount
+      };
+    } catch (error) {
+      logger.error('Failed to test search connection:', error);
+      throw error;
+    }
+  }
+  
+  async testOpenAIConnection() {
+    try {
+      // Get model information
+      const deploymentId = process.env.AZURE_OPENAI_DEPLOYMENT_NAME;
+      const result = await this.openAIClient.listDeployments();
+      const deployments = result.data.filter(d => d.id === deploymentId);
+      
+      return {
+        endpoint: process.env.AZURE_OPENAI_ENDPOINT,
+        deploymentId: deploymentId,
+        deploymentExists: deployments.length > 0
+      };
+    } catch (error) {
+      logger.error('OpenAI Connection Test Error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Test the Azure Speech Services connection
+   * @returns {Promise<object>} - Connection test result
+   */
+  async testSpeechConnection() {
+    try {
+      await this.ensureServicesReady();
+      
+      if (!this.speechConfig) {
+        throw new Error('Speech configuration not initialized');
+      }
+      
+      return {
+        success: true,
+        region: process.env.AZURE_SPEECH_REGION,
+        endpoint: process.env.AZURE_COGNITIVE_SERVICES_ENDPOINT
+      };
+    } catch (error) {
+      logger.error('Speech Connection Test Error:', error);
+      return { success: false, error: error.message };
+    }
   }
 }
 

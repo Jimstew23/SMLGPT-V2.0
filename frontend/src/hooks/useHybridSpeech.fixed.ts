@@ -147,24 +147,12 @@ export const useHybridSpeech = (
             };
             
             recognition.current.onresult = (event: SpeechRecognitionEvent) => {
-              // Type assertion to handle the Array-like SpeechRecognitionResultList
-              // which has length property but TypeScript doesn't recognize it properly
-              const resultsList = event.results as unknown as {
-                length: number;
-                [index: number]: SpeechRecognitionResult;
-              };
-              
-              const results = Array.from({ length: resultsList.length }, (_, i) => resultsList[i]);
+              // Use Object.keys to get indices and convert results to array safely
+              const results = Object.keys(event.results).map(i => event.results[Number(i)]);
               const transcript = results
                 .map(result => {
-                  // Type assertion for SpeechRecognitionResult which is also array-like
-                  const speechResult = result as unknown as {
-                    [index: number]: { transcript: string };
-                    length: number;
-                  };
-                  
-                  if (speechResult && speechResult[0]) {
-                    return speechResult[0].transcript;
+                  if (result && result[0]) {
+                    return result[0].transcript;
                   }
                   return '';
                 })

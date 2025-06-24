@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Send, Paperclip, Mic, MicOff, X, Upload } from 'lucide-react';
 import { FileUpload } from '../types';
+import toast from 'react-hot-toast';
 
 interface ChatInputProps {
   onSendMessage: (message: string, files?: File[]) => void;
@@ -12,6 +13,7 @@ interface ChatInputProps {
   isRecording?: boolean;
   pendingUploads?: FileUpload[];
   uploadProgress?: string;
+  isUploading?: boolean;
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({
@@ -55,6 +57,12 @@ const ChatInput: React.FC<ChatInputProps> = ({
       const dt = new DataTransfer();
       validFiles.forEach(file => dt.items.add(file));
       onFileUpload(dt.files);
+      
+      // Show toast notification that upload has started
+      toast(`Uploading ${validFiles.length} file(s)...`, { id: 'upload-start' });
+      
+      // Clear selected files to avoid duplicate thumbnails
+      setSelectedFiles([]);
     }
   }, [onFileUpload]);
 
@@ -106,11 +114,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
+      // Trigger immediate file upload when files are selected
       onFileUpload(e.target.files);
-    }
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      
+      // Show toast notification that upload has started
+      toast(`Uploading ${e.target.files.length} file(s)...`, { id: 'upload-start' });
+      
+      // Clear the file input to allow re-uploading the same file
+      e.target.value = '';
+      setSelectedFiles([]);
     }
   };
 
@@ -327,9 +339,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
             <button
               type="submit"
               onClick={handleSubmit}
-              disabled={(!message.trim() && selectedFiles.length === 0) || disabled || isLoading}
+              disabled={(!message.trim() && selectedFiles.length === 0) || disabled || isLoading || pendingUploads.some(upload => upload.status === 'uploading' || upload.status === 'processing')}
               className="flex-shrink-0 p-2 bg-sml-blue-600 text-white rounded-lg hover:bg-sml-blue-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-sml-blue-600 transition-colors"
-              title="Send message"
+              title={pendingUploads.some(upload => upload.status === 'uploading' || upload.status === 'processing') ? "Please wait for upload to complete" : "Send message"}
             >
               <Send className="w-5 h-5" />
             </button>
