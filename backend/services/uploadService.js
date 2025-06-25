@@ -1,4 +1,4 @@
-const { getAzureMultiService } = require('./azureMultiService');
+const azureServices = require('./azureServices');
 const chatService = require('./chatService');
 const searchService = require('./searchService');
 const documentStore = require('./documentStore');
@@ -67,8 +67,7 @@ class UploadService {
 
         // Step 3: Upload to Azure Blob Storage
         logger.info('Step 3: Uploading to Blob Storage...');
-        const azureMultiService = getAzureMultiService();
-        const blobResult = await azureMultiService.uploadToBlob(
+        const blobResult = await azureServices.uploadToBlob(
             filename,
             file.buffer,
             file.mimetype
@@ -154,7 +153,7 @@ class UploadService {
             logger.info('Step 5: Generating embeddings and indexing...');
             try {
                 // TEMPORARY: Skip embedding/search indexing to isolate issue
-                const SKIP_SEARCH_INDEXING = true; // Toggle this to disable problematic Azure Search
+                const SKIP_SEARCH_INDEXING = process.env.SKIP_SEARCH_INDEXING === 'true'; // Toggle this to disable problematic Azure Search
                 
                 if (!SKIP_SEARCH_INDEXING) {
                     const embedding = await chatService.generateEmbedding(extractedContent);
@@ -269,8 +268,7 @@ class UploadService {
   async processImageFile(imageBuffer, originalName) {
     try {
       // Use Azure Computer Vision for initial analysis
-      const azureMultiService = getAzureMultiService();
-      const visionAnalysis = await azureMultiService.analyzeImage(imageBuffer);
+      const visionAnalysis = await azureServices.analyzeImage(imageBuffer);
       
       // Use GPT-4.1 Vision for safety analysis
       const safetyAnalysis = await chatService.analyzeImageSafety(
@@ -293,8 +291,7 @@ class UploadService {
   async processDocumentFile(documentBuffer, mimeType, originalName) {
     try {
       // Use Azure Document Intelligence for text extraction
-      const azureMultiService = getAzureMultiService();
-      const documentAnalysis = await azureMultiService.analyzeDocument(documentBuffer, mimeType);
+      const documentAnalysis = await azureServices.extractTextFromDocument(documentBuffer, mimeType);
       
       // Use GPT-4.1 to analyze extracted content for safety relevance
       if (documentAnalysis.content) {
@@ -341,9 +338,8 @@ class UploadService {
       
       // Delete from blob storage
       const filename = fileInfo.stored_filename || fileInfo.filename;
-      const azureMultiService = getAzureMultiService();
-      await azureMultiService.blobServiceClient
-        .getContainerClient(azureMultiService.containerName)
+      await azureServices.blobServiceClient
+        .getContainerClient(azureServices.containerName)
         .getBlockBlobClient(filename)
         .delete();
       
@@ -420,8 +416,7 @@ class UploadService {
             // Azure Computer Vision with timeout
             Promise.race([
                 (async () => {
-                    const azureMultiService = getAzureMultiService();
-                    return await azureMultiService.analyzeImage(imageBuffer);
+                    return await azureServices.analyzeImage(imageBuffer);
                 })(),
                 new Promise((_, reject) => 
                     setTimeout(() => reject(new Error('Vision analysis timeout')), 30000)

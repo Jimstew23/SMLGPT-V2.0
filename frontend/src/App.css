@@ -363,3 +363,12 @@ header .title {
   max-width: 400px;
   width: 90%;
 }
+
+/* Toggle icon states */
+.icon-btn.active-mic {
+  color: #10b981; /* Green when active */
+}
+
+.icon-btn.active-speaker {
+  color: #10b981; /* Green when active */
+}

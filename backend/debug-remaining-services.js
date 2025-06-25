@@ -14,8 +14,8 @@ async function debugRemainingServices() {
       test: async () => {
         console.log('📄 Testing Document Intelligence with timeout...');
         const documentClient = new DocumentAnalysisClient(
-          process.env.AZURE_COGNITIVE_SERVICES_ENDPOINT,
-          new AzureKeyCredential(process.env.AZURE_COGNITIVE_SERVICES_KEY)
+          process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT,
+          new AzureKeyCredential(process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY)
         );
         
         // Try to check service availability - this might hang if there's an issue
@@ -71,7 +71,7 @@ async function debugRemainingServices() {
           console.log('     - Document Intelligence service not available in region');
           console.log('     - Endpoint or key configuration issue');
           console.log('     - Service quota or billing issues');
-          console.log(`     - Endpoint: ${process.env.AZURE_COGNITIVE_SERVICES_ENDPOINT}`);
+          console.log(`     - Endpoint: ${process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT}`);
         } else if (service.name === 'Speech Services') {
           console.log('   🔧 Possible causes:');
           console.log('     - Speech service region incorrect');

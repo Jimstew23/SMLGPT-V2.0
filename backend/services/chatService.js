@@ -4,7 +4,6 @@ const searchService = require('./searchService');
 const enhancedSafetyService = require('./enhancedSafetyService');
 const documentStore = require('./documentStore');
 const logger = require('../utils/logger');
-const { getAzureMultiService } = require('./azureMultiService');
 const fs = require('fs').promises;
 const path = require('path');
 const fetch = require('node-fetch'); // Required for fetchImageFromBlobUrl method
@@ -394,7 +393,7 @@ Content: ${contentPreview}${imageInfo}`;
         // Try to get the blob directly using the Azure SDK first
         try {
           logger.info('Attempting to use Azure SDK to access blob');
-          const azureMultiService = getAzureMultiService();
+          const azureMultiService = require('./azureMultiService');
           
           // Extract container and blob name from URL
           const urlParts = new URL(blobUrl);

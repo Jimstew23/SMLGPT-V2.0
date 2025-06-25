@@ -29,8 +29,8 @@ async function debugAzureServicesHang() {
       name: 'Computer Vision',
       test: async () => {
         console.log('👁️ Testing Computer Vision initialization...');
-        const computerVisionKey = new CognitiveServicesCredentials(process.env.AZURE_COGNITIVE_SERVICES_KEY);
-        const visionClient = new ComputerVisionClient(computerVisionKey, process.env.AZURE_COGNITIVE_SERVICES_ENDPOINT);
+        const computerVisionKey = new CognitiveServicesCredentials(process.env.AZURE_COMPUTER_VISION_KEY);
+        const visionClient = new ComputerVisionClient(computerVisionKey, process.env.AZURE_COMPUTER_VISION_ENDPOINT);
         // Test basic connectivity - just create client (no API call)
         console.log('✅ Computer Vision: Client created successfully');
         return true;
@@ -41,8 +41,8 @@ async function debugAzureServicesHang() {
       test: async () => {
         console.log('📄 Testing Document Intelligence initialization...');
         const documentClient = new DocumentAnalysisClient(
-          process.env.AZURE_COGNITIVE_SERVICES_ENDPOINT,
-          new AzureKeyCredential(process.env.AZURE_COGNITIVE_SERVICES_KEY)
+          process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT,
+          new AzureKeyCredential(process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY)
         );
         // Test basic connectivity - just create client (no API call)
         console.log('✅ Document Intelligence: Client created successfully');
@@ -112,7 +112,7 @@ async function debugAzureServicesHang() {
           console.log('   🔧 Check: AZURE_STORAGE_CONNECTION_STRING');
           console.log('   🔧 Verify: Azure Storage account is accessible');
         } else if (serviceTest.name === 'Computer Vision') {
-          console.log('   🔧 Check: AZURE_COGNITIVE_SERVICES_KEY and AZURE_COGNITIVE_SERVICES_ENDPOINT');
+          console.log('   🔧 Check: AZURE_COMPUTER_VISION_KEY and AZURE_COMPUTER_VISION_ENDPOINT');
           console.log('   🔧 Verify: Computer Vision service is enabled');
         } else if (serviceTest.name === 'Document Intelligence') {
           console.log('   🔧 Check: Document Intelligence service configuration');
@@ -141,8 +141,10 @@ async function debugAzureServicesHang() {
 console.log('🔍 Checking environment variables...');
 const requiredEnvVars = [
   'AZURE_STORAGE_CONNECTION_STRING',
-  'AZURE_COGNITIVE_SERVICES_KEY', 
-  'AZURE_COGNITIVE_SERVICES_ENDPOINT',
+  'AZURE_COMPUTER_VISION_KEY', 
+  'AZURE_COMPUTER_VISION_ENDPOINT',
+  'AZURE_DOCUMENT_INTELLIGENCE_KEY',
+  'AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT',
   'AZURE_SEARCH_ENDPOINT',
   'AZURE_SEARCH_ADMIN_KEY',
   'AZURE_SPEECH_KEY',
