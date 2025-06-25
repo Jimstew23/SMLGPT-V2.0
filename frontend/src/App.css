@@ -281,12 +281,17 @@ header .title {
 
 /* Input bar (medium gray) */
 .input-bar {
-  background: #3a3a3a;
-  display: flex; 
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #2a2a2a;
+  padding: 10px;
+  display: flex;
   align-items: center;
-  padding: 8px 16px;
-  border-top: 2px solid #388E3C;
-  gap: 8px;
+  gap: 10px;
+  z-index: 1000;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .input-bar .icon-btn {
@@ -321,6 +326,111 @@ header .title {
 
 .input-bar input::placeholder {
   color: #888;
+}
+
+/* Icon Button Styling */
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  min-width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.05);
+}
+
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.icon-btn i {
+  font-size: 18px;
+}
+
+/* File Attachment Styling */
+.attachments {
+  position: fixed;
+  bottom: 60px;
+  left: 10px;
+  right: 10px;
+  background: rgba(42, 42, 42, 0.95);
+  padding: 10px;
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  z-index: 999;
+}
+
+.attachment {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(76, 175, 80, 0.2);
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #4CAF50;
+}
+
+.attachment .thumb {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.attachment span {
+  color: #ffffff;
+  font-size: 12px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment .remove {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: #ff6b6b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.attachment .remove:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Chat Message Image Display */
+.message img {
+  max-width: 300px;
+  max-height: 200px;
+  border-radius: 8px;
+  margin: 8px 0;
+  object-fit: cover;
+}
+
+/* Ensure Font Awesome icons are visible */
+.fa, .fas, .far, .fal, .fab {
+  font-family: "Font Awesome 6 Free", "Font Awesome 6 Pro", "Font Awesome 5 Free", "Font Awesome 5 Pro" !important;
+  font-weight: 900;
+  display: inline-block;
 }
 
 /* User message content container (bubble + timestamp) should stack vertically */

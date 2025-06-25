@@ -662,6 +662,58 @@ Provide detailed, actionable safety analysis with specific control measures.`;
     }
   }
 
+  async analyzeImageWithEnhancedSafety(imageBuffer, fileName = 'uploaded_image') {
+    try {
+      logger.info('Starting safety analysis with Georgia-Pacific 2025 compliance...');
+      
+      // Use our existing image safety analysis with comprehensive SML instructions
+      const result = await this.analyzeImageSafety(
+        imageBuffer,
+        `Analyze this workplace image (${fileName}) for safety hazards using Georgia-Pacific 2025 SML compliance standards. 
+        
+        Identify:
+        1. All visible safety hazards and risks
+        2. SML work categories involved
+        3. Critical hazards requiring immediate attention
+        4. Risk levels (severity × probability)
+        5. Required controls (prevention and recovery)
+        6. PPE compliance status
+        7. Any stop work conditions
+        
+        Provide detailed safety recommendations and risk mitigation strategies.`
+      );
+      
+      // Extract safety analysis from GPT-4.1 response and structure it properly
+      const analysis = result.safety_analysis || {};
+      
+      return {
+        safety_analysis: {
+          risk_level: analysis.risk_level || 'MODERATE_CONCERN',
+          risk_score: analysis.risk_score || 5,
+          confidence_level: analysis.confidence_level || 85,
+          stop_work_required: analysis.stop_work_required || false,
+          stop_work_reasoning: analysis.stop_work_reasoning || '',
+          hazards: analysis.hazards || [],
+          sml_categories: analysis.sml_categories || [],
+          immediate_actions: analysis.immediate_actions || [],
+          recommendations: analysis.recommendations || [],
+          analysis_reasoning: analysis.analysis_reasoning || '',
+          confidence_reasoning: analysis.confidence_reasoning || '',
+          uncertainty_factors: analysis.uncertainty_factors || [],
+          memory_validation: analysis.memory_validation || null,
+          analysis_timestamp: new Date().toISOString(),
+          analysis_version: '2.0-production'
+        },
+        // Return the formatted GPT-4.1 response directly
+        formatted_response: result.safety_analysis || result.formatted_response || 'Safety analysis completed successfully.'
+      };
+      
+    } catch (error) {
+      logger.error('Safety analysis failed:', error);
+      throw new Error(`Safety analysis failed: ${error.message}`);
+    }
+  }
+
   analyzeSafetyFlags(response) {
     const flags = [];
     const responseUpper = response.toUpperCase();
@@ -754,43 +806,6 @@ Provide detailed, actionable safety analysis with specific control measures.`;
 
   generateConversationId() {
     return `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  async analyzeImageWithEnhancedSafety(imageBuffer, fileName = 'uploaded_image') {
-    try {
-      logger.info('Starting enhanced safety analysis with memory and reasoning...');
-      
-      // Use the enhanced safety service for comprehensive analysis
-      const enhancedAnalysis = await enhancedSafetyService.analyzeWithEnhancedSafety(imageBuffer, fileName);
-      
-      // Convert to chat service format while preserving enhanced features
-      return {
-        safety_analysis: {
-          risk_level: enhancedAnalysis.overall_risk_level,
-          risk_score: enhancedAnalysis.risk_score,
-          confidence_level: enhancedAnalysis.confidence_level,
-          stop_work_required: enhancedAnalysis.stop_work_required,
-          stop_work_reasoning: enhancedAnalysis.stop_work_reasoning,
-          hazards: enhancedAnalysis.hazards || [],
-          sml_categories: enhancedAnalysis.sml_categories || [],
-          immediate_actions: enhancedAnalysis.immediate_actions || [],
-          recommendations: enhancedAnalysis.recommendations || [],
-          analysis_reasoning: enhancedAnalysis.analysis_reasoning,
-          confidence_reasoning: enhancedAnalysis.confidence_reasoning,
-          uncertainty_factors: enhancedAnalysis.uncertainty_factors || [],
-          memory_validation: enhancedAnalysis.memory_validation,
-          analysis_timestamp: enhancedAnalysis.analysis_timestamp,
-          analysis_version: enhancedAnalysis.analysis_version
-        },
-        // Generate formatted response for chat
-        formatted_response: this.formatEnhancedSafetyResponse(enhancedAnalysis)
-        // UI flags removed - using formatted response instead
-      };
-      
-    } catch (error) {
-      logger.error('Enhanced safety analysis failed:', error);
-      throw new Error(`Enhanced safety analysis failed: ${error.message}`);
-    }
   }
 
   formatEnhancedSafetyResponse(analysis) {

@@ -105,7 +105,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   const removeFile = (indexToRemove: number) => {
-    setSelectedFiles(prev => prev.filter((_, index) => index !== indexToRemove));
+    setSelectedFiles(prev => prev.filter((_: any, index: number) => index !== indexToRemove));
   };
 
   const handleFileInputClick = () => {
@@ -272,7 +272,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm text-chat-dark-text">{upload.file.name}</span>
                       <span className="text-xs text-chat-dark-text-secondary">
-                        {upload.status === 'uploading' ? `${upload.progress}%` : upload.status}
+                        {upload.status === 'uploading' ? `${upload.progress || 0}%` : upload.status}
                       </span>
                     </div>
                     <div className="w-full bg-chat-dark-tertiary rounded-full h-2">
@@ -282,7 +282,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                           upload.status === 'completed' ? 'bg-green-500' :
                           'bg-sml-blue-500'
                         }`}
-                        style={{ width: `${upload.progress}%` }}
+                        style={{ width: `${upload.progress || 0}%` }}
                       />
                     </div>
                   </div>

@@ -618,9 +618,6 @@ const HybridChatInterface: React.FC = () => {
 
       {/* Input Bar with Icons */}
       <div className="input-bar">
-        <button className="icon-btn">
-          <i className="fas fa-paperclip"></i>
-        </button>
         <ChatInput
           onSendMessage={handleSendMessage}
           onFileUpload={handleFileUpload}
@@ -636,7 +633,8 @@ const HybridChatInterface: React.FC = () => {
               type: doc.type,
               size: doc.size,
               file: new File([], doc.filename, { type: doc.type }),
-              status: isUploading ? ('uploading' as const) : ('completed' as const)
+              status: isUploading ? ('uploading' as const) : ('completed' as const),
+              progress: isUploading ? 50 : 100
             })),
             ...(isUploading ? [{
               id: 'uploading',
@@ -650,9 +648,6 @@ const HybridChatInterface: React.FC = () => {
           ]}
           uploadProgress={uploadProgress}
         />
-        <button className="icon-btn">
-          <i className="fas fa-paper-plane"></i>
-        </button>
       </div>
     </div>
   );

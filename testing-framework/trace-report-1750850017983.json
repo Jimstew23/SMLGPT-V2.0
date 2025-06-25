@@ -1,0 +1,224 @@
+{
+  "summary": {
+    "totalSteps": 15,
+    "successCount": 4,
+    "errorCount": 3,
+    "totalDuration": 6783,
+    "timestamp": "2025-06-25T11:13:37.983Z"
+  },
+  "steps": [
+    {
+      "step": "Testing Health Check",
+      "status": "start",
+      "timestamp": 1,
+      "details": {},
+      "time": "2025-06-25T11:13:31.192Z"
+    },
+    {
+      "step": "API Call: GET http://localhost:5000/api/health",
+      "status": "info",
+      "timestamp": 2,
+      "details": {
+        "callId": 1750850011193
+      },
+      "time": "2025-06-25T11:13:31.193Z"
+    },
+    {
+      "step": "API Response: 200",
+      "status": "success",
+      "timestamp": 31,
+      "details": {
+        "callId": 1750850011193,
+        "duration": "29ms",
+        "dataPreview": "{\"status\":\"healthy\",\"timestamp\":\"2025-06-25T11:13:31.218Z\",\"version\":\"2.0.0\",\"environment\":\"developm"
+      },
+      "time": "2025-06-25T11:13:31.222Z"
+    },
+    {
+      "step": "Backend is healthy",
+      "status": "success",
+      "timestamp": 31,
+      "details": {},
+      "time": "2025-06-25T11:13:31.222Z"
+    },
+    {
+      "step": "Creating test image",
+      "status": "info",
+      "timestamp": 32,
+      "details": {},
+      "time": "2025-06-25T11:13:31.223Z"
+    },
+    {
+      "step": "Test image created",
+      "status": "success",
+      "timestamp": 413,
+      "details": {
+        "path": "C:\\Users\\jimst\\Desktop\\SMLGPT\\smlgpt-v2\\testing-framework\\test-safety-image.jpg"
+      },
+      "time": "2025-06-25T11:13:31.604Z"
+    },
+    {
+      "step": "Testing Image Upload",
+      "status": "start",
+      "timestamp": 413,
+      "details": {
+        "file": "C:\\Users\\jimst\\Desktop\\SMLGPT\\smlgpt-v2\\testing-framework\\test-safety-image.jpg"
+      },
+      "time": "2025-06-25T11:13:31.604Z"
+    },
+    {
+      "step": "Reading image file",
+      "status": "info",
+      "timestamp": 413,
+      "details": {},
+      "time": "2025-06-25T11:13:31.604Z"
+    },
+    {
+      "step": "Image loaded",
+      "status": "success",
+      "timestamp": 414,
+      "details": {
+        "size": "0.00MB",
+        "type": ".jpg"
+      },
+      "time": "2025-06-25T11:13:31.605Z"
+    },
+    {
+      "step": "Creating form data",
+      "status": "info",
+      "timestamp": 414,
+      "details": {},
+      "time": "2025-06-25T11:13:31.605Z"
+    },
+    {
+      "step": "Uploading to backend",
+      "status": "info",
+      "timestamp": 415,
+      "details": {},
+      "time": "2025-06-25T11:13:31.606Z"
+    },
+    {
+      "step": "API Call: POST http://localhost:5000/api/upload",
+      "status": "info",
+      "timestamp": 415,
+      "details": {
+        "callId": 1750850011606
+      },
+      "time": "2025-06-25T11:13:31.606Z"
+    },
+    {
+      "step": "API Error: 500",
+      "status": "error",
+      "timestamp": 6783,
+      "details": {
+        "callId": 1750850011606,
+        "duration": "6368ms",
+        "error": {
+          "error": "File upload processing failed: cacheService.cacheResult is not a function",
+          "stack": "Error: File upload processing failed: cacheService.cacheResult is not a function\n    at UploadService.processFileUpload (C:\\Users\\jimst\\Desktop\\SMLGPT\\smlgpt-v2\\backend\\services\\uploadService.js:264:15)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async C:\\Users\\jimst\\Desktop\\SMLGPT\\smlgpt-v2\\backend\\server.js:124:20"
+        }
+      },
+      "time": "2025-06-25T11:13:37.974Z"
+    },
+    {
+      "step": "Upload failed",
+      "status": "error",
+      "timestamp": 6783,
+      "details": {
+        "status": 500,
+        "error": {
+          "error": "File upload processing failed: cacheService.cacheResult is not a function",
+          "stack": "Error: File upload processing failed: cacheService.cacheResult is not a function\n    at UploadService.processFileUpload (C:\\Users\\jimst\\Desktop\\SMLGPT\\smlgpt-v2\\backend\\services\\uploadService.js:264:15)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async C:\\Users\\jimst\\Desktop\\SMLGPT\\smlgpt-v2\\backend\\server.js:124:20"
+        }
+      },
+      "time": "2025-06-25T11:13:37.974Z"
+    },
+    {
+      "step": "Upload failed - stopping test",
+      "status": "error",
+      "timestamp": 6783,
+      "details": {},
+      "time": "2025-06-25T11:13:37.974Z"
+    }
+  ],
+  "apiCalls": [
+    {
+      "callId": 1750850011193,
+      "method": "GET",
+      "url": "http://localhost:5000/api/health",
+      "status": 200,
+      "duration": 29,
+      "requestSize": 2,
+      "responseSize": 105,
+      "headers": {
+        "content-security-policy": "default-src 'self';style-src 'self' 'unsafe-inline';script-src 'self';img-src 'self' data: https:;base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';object-src 'none';script-src-attr 'none';upgrade-insecure-requests",
+        "cross-origin-opener-policy": "same-origin",
+        "cross-origin-resource-policy": "same-origin",
+        "origin-agent-cluster": "?1",
+        "referrer-policy": "no-referrer",
+        "strict-transport-security": "max-age=15552000; includeSubDomains",
+        "x-content-type-options": "nosniff",
+        "x-dns-prefetch-control": "off",
+        "x-download-options": "noopen",
+        "x-frame-options": "SAMEORIGIN",
+        "x-permitted-cross-domain-policies": "none",
+        "x-xss-protection": "0",
+        "x-ratelimit-limit": "100",
+        "x-ratelimit-remaining": "99",
+        "date": "Wed, 25 Jun 2025 11:13:31 GMT",
+        "x-ratelimit-reset": "1750850912",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "content-type": "application/json; charset=utf-8",
+        "content-length": "105",
+        "etag": "W/\"69-2sByOJ5hhFEqOW3ow8DwB1ffeOU\"",
+        "connection": "keep-alive",
+        "keep-alive": "timeout=5"
+      }
+    },
+    {
+      "callId": 1750850011606,
+      "method": "POST",
+      "url": "http://localhost:5000/api/upload",
+      "status": 500,
+      "duration": 6368,
+      "requestSize": 342,
+      "responseSize": 477,
+      "headers": {
+        "content-security-policy": "default-src 'self';style-src 'self' 'unsafe-inline';script-src 'self';img-src 'self' data: https:;base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';object-src 'none';script-src-attr 'none';upgrade-insecure-requests",
+        "cross-origin-opener-policy": "same-origin",
+        "cross-origin-resource-policy": "same-origin",
+        "origin-agent-cluster": "?1",
+        "referrer-policy": "no-referrer",
+        "strict-transport-security": "max-age=15552000; includeSubDomains",
+        "x-content-type-options": "nosniff",
+        "x-dns-prefetch-control": "off",
+        "x-download-options": "noopen",
+        "x-frame-options": "SAMEORIGIN",
+        "x-permitted-cross-domain-policies": "none",
+        "x-xss-protection": "0",
+        "x-ratelimit-limit": "100",
+        "x-ratelimit-remaining": "98",
+        "date": "Wed, 25 Jun 2025 11:13:31 GMT",
+        "x-ratelimit-reset": "1750850912",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "content-type": "application/json; charset=utf-8",
+        "content-length": "477",
+        "etag": "W/\"1dd-G9To4qNvq6uQ5CdAEcIaggz4heY\"",
+        "connection": "keep-alive",
+        "keep-alive": "timeout=5"
+      }
+    }
+  ],
+  "errors": [
+    {
+      "step": "API POST http://localhost:5000/api/upload",
+      "error": {
+        "error": "File upload processing failed: cacheService.cacheResult is not a function",
+        "stack": "Error: File upload processing failed: cacheService.cacheResult is not a function\n    at UploadService.processFileUpload (C:\\Users\\jimst\\Desktop\\SMLGPT\\smlgpt-v2\\backend\\services\\uploadService.js:264:15)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async C:\\Users\\jimst\\Desktop\\SMLGPT\\smlgpt-v2\\backend\\server.js:124:20"
+      },
+      "status": 500
+    }
+  ]
+}

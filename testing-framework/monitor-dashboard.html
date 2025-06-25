@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SMLGPT Process Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background: #1a1a1a;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .card {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #333;
+        }
+        .flow-step {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .flow-step.success { background: #1a4d2e; }
+        .flow-step.error { background: #5d1216; }
+        .flow-step.warning { background: #5d4a16; }
+        .flow-step.info { background: #16395d; }
+        .status-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+        }
+        .status-icon.success { background: #4caf50; }
+        .status-icon.error { background: #f44336; }
+        .status-icon.warning { background: #ff9800; }
+        .status-icon.info { background: #2196f3; }
+        h1, h2 { margin: 0 0 20px 0; }
+        .metrics {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .metric {
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            flex: 1;
+        }
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .metric-label {
+            font-size: 0.9em;
+            color: #999;
+        }
+        #flowDiagram {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+        .flow-visualization {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            min-width: fit-content;
+        }
+        .flow-node {
+            background: #333;
+            padding: 15px 25px;
+            border-radius: 8px;
+            position: relative;
+            min-width: 150px;
+            text-align: center;
+        }
+        .flow-node.active {
+            background: #2196f3;
+            animation: pulse 1s infinite;
+        }
+        .flow-node.success {
+            background: #4caf50;
+        }
+        .flow-node.error {
+            background: #f44336;
+        }
+        .flow-arrow {
+            width: 40px;
+            height: 2px;
+            background: #666;
+            position: relative;
+        }
+        .flow-arrow::after {
+            content: '';
+            position: absolute;
+            right: -8px;
+            top: -4px;
+            width: 0;
+            height: 0;
+            border-left: 10px solid #666;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+        .error-details {
+            background: #3a1a1a;
+            border: 1px solid #5d1216;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #1976d2;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .connection-status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .connection-status.connected {
+            background: #1a4d2e;
+            color: #4caf50;
+        }
+        .connection-status.disconnected {
+            background: #5d1216;
+            color: #f44336;
+        }
+        .log-entry {
+            padding: 8px;
+            margin: 2px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.85em;
+            border-left: 3px solid #333;
+        }
+        .log-entry.success { border-left-color: #4caf50; }
+        .log-entry.error { border-left-color: #f44336; }
+        .log-entry.warning { border-left-color: #ff9800; }
+        .log-entry.info { border-left-color: #2196f3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 SMLGPT Process Monitor</h1>
+        
+        <div class="connection-status disconnected" id="connectionStatus">
+            🔴 Disconnected - Attempting to connect...
+        </div>
+        
+        <div class="controls">
+            <button onclick="startTest('health')">Test Health Check</button>
+            <button onclick="startTest('upload')">Test Image Upload</button>
+            <button onclick="startTest('chat')">Test Chat Analysis</button>
+            <button onclick="startTest('full')">Run Full Scenario</button>
+            <button onclick="clearLogs()">Clear Logs</button>
+        </div>
+
+        <div class="metrics">
+            <div class="metric">
+                <div class="metric-label">Total API Calls</div>
+                <div class="metric-value" id="totalCalls">0</div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">Success Rate</div>
+                <div class="metric-value" id="successRate">0%</div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">Avg Response Time</div>
+                <div class="metric-value" id="avgResponseTime">0ms</div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">Active Errors</div>
+                <div class="metric-value" id="errorCount" style="color: #f44336;">0</div>
+            </div>
+        </div>
+
+        <div id="flowDiagram">
+            <h2>Process Flow Visualization</h2>
+            <div class="flow-visualization">
+                <div class="flow-node" id="node-frontend">Frontend</div>
+                <div class="flow-arrow"></div>
+                <div class="flow-node" id="node-backend">Backend API</div>
+                <div class="flow-arrow"></div>
+                <div class="flow-node" id="node-azure">Azure Services</div>
+                <div class="flow-arrow"></div>
+                <div class="flow-node" id="node-response">Response</div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>📊 API Performance</h2>
+                <canvas id="performanceChart"></canvas>
+            </div>
+            
+            <div class="card">
+                <h2>🔄 Process Steps</h2>
+                <div id="processSteps"></div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px;">
+            <h2>📝 Detailed Logs</h2>
+            <div id="detailedLogs" style="max-height: 400px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <script>
+        // WebSocket connection for real-time updates
+        let ws;
+        let processSteps = [];
+        let apiCalls = [];
+        let performanceChart;
+        let isConnected = false;
+
+        // Initialize chart
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        performanceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Response Time (ms)',
+                    data: [],
+                    borderColor: '#2196f3',
+                    backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        labels: { color: '#fff' }
+                    }
+                },
+                scales: {
+                    x: { 
+                        ticks: { color: '#fff' },
+                        grid: { color: '#333' }
+                    },
+                    y: { 
+                        beginAtZero: true,
+                        ticks: { color: '#fff' },
+                        grid: { color: '#333' }
+                    }
+                }
+            }
+        });
+
+        function connectWebSocket() {
+            try {
+                ws = new WebSocket('ws://localhost:8081');
+                
+                ws.onopen = () => {
+                    updateConnectionStatus(true);
+                    addLogEntry('WebSocket connected', 'success');
+                };
+                
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    handleUpdate(data);
+                };
+                
+                ws.onclose = () => {
+                    updateConnectionStatus(false);
+                    addLogEntry('WebSocket disconnected - retrying in 5s', 'warning');
+                    setTimeout(connectWebSocket, 5000);
+                };
+                
+                ws.onerror = () => {
+                    updateConnectionStatus(false);
+                    addLogEntry('WebSocket error - using HTTP polling', 'error');
+                    startPolling();
+                };
+            } catch (error) {
+                updateConnectionStatus(false);
+                addLogEntry('WebSocket connection failed - using HTTP polling', 'error');
+                startPolling();
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            isConnected = connected;
+            const statusEl = document.getElementById('connectionStatus');
+            if (connected) {
+                statusEl.textContent = '🟢 Connected - Real-time monitoring active';
+                statusEl.className = 'connection-status connected';
+            } else {
+                statusEl.textContent = '🔴 Disconnected - Attempting to reconnect...';
+                statusEl.className = 'connection-status disconnected';
+            }
+        }
+
+        function addLogEntry(message, status) {
+            const logsDiv = document.getElementById('detailedLogs');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${status}`;
+            logEntry.innerHTML = `<span style="color: #666;">[${new Date().toLocaleTimeString()}]</span> ${message}`;
+            logsDiv.insertBefore(logEntry, logsDiv.firstChild);
+            
+            // Keep only last 100 entries
+            while (logsDiv.children.length > 100) {
+                logsDiv.removeChild(logsDiv.lastChild);
+            }
+        }
+
+        function handleUpdate(data) {
+            if (data.type === 'step') {
+                addProcessStep(data);
+            } else if (data.type === 'api_call') {
+                addApiCall(data);
+            } else if (data.type === 'error') {
+                showError(data);
+            }
+            
+            updateMetrics();
+            updateFlowVisualization(data);
+        }
+
+        function addProcessStep(step) {
+            const stepsDiv = document.getElementById('processSteps');
+            const stepDiv = document.createElement('div');
+            stepDiv.className = `flow-step ${step.status}`;
+            stepDiv.innerHTML = `
+                <div class="status-icon ${step.status}"></div>
+                <div>
+                    <strong>${step.step}</strong>
+                    ${step.details ? `<br><small>${step.details}</small>` : ''}
+                </div>
+                <small style="margin-left: auto;">${step.timestamp}ms</small>
+            `;
+            stepsDiv.insertBefore(stepDiv, stepsDiv.firstChild);
+            
+            // Keep only last 20 steps
+            while (stepsDiv.children.length > 20) {
+                stepsDiv.removeChild(stepsDiv.lastChild);
+            }
+            
+            addLogEntry(`${step.step} - ${step.status}`, step.status);
+        }
+
+        function addApiCall(call) {
+            apiCalls.push(call);
+            
+            // Update chart
+            performanceChart.data.labels.push(new Date().toLocaleTimeString());
+            performanceChart.data.datasets[0].data.push(call.duration);
+            
+            if (performanceChart.data.labels.length > 20) {
+                performanceChart.data.labels.shift();
+                performanceChart.data.datasets[0].data.shift();
+            }
+            
+            performanceChart.update('none'); // No animation for real-time updates
+            
+            addLogEntry(`API ${call.method} ${call.url} - ${call.status} (${call.duration}ms)`, 
+                       call.status >= 200 && call.status < 300 ? 'success' : 'error');
+        }
+
+        function updateMetrics() {
+            document.getElementById('totalCalls').textContent = apiCalls.length;
+            
+            const successCalls = apiCalls.filter(c => c.status >= 200 && c.status < 300);
+            const successRate = apiCalls.length > 0 
+                ? Math.round((successCalls.length / apiCalls.length) * 100) 
+                : 0;
+            document.getElementById('successRate').textContent = successRate + '%';
+            
+            const avgTime = apiCalls.length > 0
+                ? Math.round(apiCalls.reduce((sum, c) => sum + c.duration, 0) / apiCalls.length)
+                : 0;
+            document.getElementById('avgResponseTime').textContent = avgTime + 'ms';
+            
+            const errors = apiCalls.filter(c => c.status >= 400);
+            document.getElementById('errorCount').textContent = errors.length;
+        }
+
+        function updateFlowVisualization(data) {
+            // Reset all nodes
+            document.querySelectorAll('.flow-node').forEach(node => {
+                node.classList.remove('active', 'success', 'error');
+            });
+            
+            // Update based on current step
+            if (data.flowStage) {
+                const node = document.getElementById(`node-${data.flowStage}`);
+                if (node) {
+                    node.classList.add(data.status === 'error' ? 'error' : 
+                                     data.status === 'success' ? 'success' : 'active');
+                }
+            }
+        }
+
+        function showError(error) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-details';
+            errorDiv.innerHTML = `
+                <strong>❌ Error in ${error.step}</strong><br>
+                ${JSON.stringify(error.details, null, 2)}
+            `;
+            
+            const logsDiv = document.getElementById('detailedLogs');
+            logsDiv.insertBefore(errorDiv, logsDiv.firstChild);
+            
+            addLogEntry(`ERROR in ${error.step}: ${JSON.stringify(error.details)}`, 'error');
+        }
+
+        async function startTest(testType) {
+            try {
+                addLogEntry(`Starting ${testType} test...`, 'info');
+                const response = await fetch('http://localhost:8081/test/' + testType, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                addLogEntry(`Test ${testType} initiated: ${JSON.stringify(result)}`, 'success');
+            } catch (error) {
+                addLogEntry(`Failed to start test ${testType}: ${error.message}`, 'error');
+            }
+        }
+
+        function clearLogs() {
+            document.getElementById('processSteps').innerHTML = '';
+            document.getElementById('detailedLogs').innerHTML = '';
+            apiCalls = [];
+            updateMetrics();
+            
+            // Clear chart
+            performanceChart.data.labels = [];
+            performanceChart.data.datasets[0].data = [];
+            performanceChart.update();
+            
+            addLogEntry('Logs cleared', 'info');
+        }
+
+        // HTTP Polling fallback
+        function startPolling() {
+            setInterval(async () => {
+                if (isConnected) return; // Don't poll if WebSocket is working
+                
+                try {
+                    const response = await fetch('http://localhost:8081/status');
+                    const data = await response.json();
+                    
+                    // Process any new updates
+                    if (data.recentUpdates) {
+                        data.recentUpdates.forEach(update => handleUpdate(update));
+                    }
+                } catch (error) {
+                    // Silently fail - server might not be running
+                }
+            }, 2000);
+        }
+
+        // Initialize
+        connectWebSocket();
+        
+        // Add some demo data on load
+        setTimeout(() => {
+            addLogEntry('SMLGPT Monitor initialized', 'success');
+            addLogEntry('Waiting for test server connection...', 'info');
+        }, 500);
+    </script>
+</body>
+</html>
