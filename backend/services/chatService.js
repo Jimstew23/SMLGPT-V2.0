@@ -375,10 +375,13 @@ Content: ${contentPreview}${imageInfo}`;
 
       // Check if this is an Azure Blob URL and handle SAS token if needed
       if (blobUrl.includes('.blob.core.windows.net')) {
-        // Define the SAS token - use environment variable if available, otherwise use the provided one
-        // Using the SAS token you provided with extended permissions and validity until March 31, 2026
-        const sasToken = process.env.AZURE_BLOB_SAS_TOKEN || 
-          'sp=racwdlmep&st=2025-06-24T16:18:35Z&se=2026-04-01T00:18:35Z&spr=https&sv=2024-11-04&sr=c&sig=fDtWhH2lrZNCs%2B%2Fr4fGLzYyJmpg5M3yIREqIFzYpa9s%3D';
+        // Define the SAS token - use environment variable
+        const sasToken = process.env.AZURE_BLOB_SAS_TOKEN;
+        
+        if (!sasToken) {
+          logger.error('AZURE_BLOB_SAS_TOKEN environment variable not set');
+          throw new Error('SAS token not configured');
+        }
         
         // If URL doesn't have authentication parameters, append SAS token
         if (!blobUrl.includes('?')) {
