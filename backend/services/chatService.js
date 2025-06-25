@@ -1,7 +1,6 @@
 const { AzureOpenAI } = require('openai');
 const azureServices = require('./azureServices');
 const searchService = require('./searchService');
-const enhancedSafetyService = require('./enhancedSafetyService');
 const documentStore = require('./documentStore');
 const logger = require('../utils/logger');
 const fs = require('fs').promises;

@@ -471,32 +471,44 @@ const HybridChatInterface: React.FC = () => {
       
       {/* Top Status Bar */}
       <div className="status-bar">
-        <span><i className="fas fa-circle status-indicator"></i> {isConnected ? 'Connected' : 'Disconnected'}</span>
-        <span>Auto-Speak: <i className={`fas ${autoSpeak ? 'fa-toggle-on' : 'fa-toggle-off'}`}></i></span>
         <span>
-          Speech Engine:
-          <select onChange={(e) => setUseAzureSpeech(e.target.value === 'Azure')} value={useAzureSpeech ? 'Azure' : 'Native'}>
-            <option value="Native">Native API</option>
-            <option value="Azure">Azure API</option>
-          </select>
+          <i className={`fas fa-circle status-indicator ${isConnected ? 'connected' : ''}`}></i> 
+          {isConnected ? 'Connected' : 'Disconnected'}
         </span>
-        <button 
-          className={`icon-btn ${isRecording ? 'active-mic' : ''}`} 
-          onClick={toggleRecording} 
-          title={isRecording ? 'Stop recording' : 'Start recording'}
-        >
-          <i className={`fas ${isRecording ? 'fa-microphone' : 'fa-microphone-slash'}`}></i>
-        </button>
-        <button className={`icon-btn ${autoSpeak ? 'active-speaker' : ''}`} onClick={() => setAutoSpeak(!autoSpeak)}>
-          <i className={`fas ${autoSpeak ? 'fa-volume-up' : 'fa-volume-off'}`}></i>
-        </button>
+        
+        <div className="speech-controls">
+          <button 
+            className={`icon-btn ${isRecording ? 'recording' : ''}`}
+            onClick={toggleRecording}
+            title={isRecording ? 'Stop recording' : 'Start recording'}
+          >
+            <i className={`fas ${isRecording ? 'fa-stop-circle' : 'fa-microphone'}`}></i>
+            {isRecording && <span className="recording-text">Recording...</span>}
+          </button>
+          
+          <button 
+            className={`icon-btn ${autoSpeak ? 'active' : ''}`} 
+            onClick={() => setAutoSpeak(!autoSpeak)}
+            title={autoSpeak ? 'Disable auto-speak' : 'Enable auto-speak'}
+          >
+            <i className={`fas ${autoSpeak ? 'fa-volume-up' : 'fa-volume-mute'}`}></i>
+          </button>
+          
+          {isSpeaking && (
+            <button 
+              className="icon-btn stop-speaking"
+              onClick={stopSpeaking}
+              title="Stop speaking"
+            >
+              <i className="fas fa-stop"></i>
+            </button>
+          )}
+        </div>
+        
         <VoiceSelector
           selectedVoice={selectedVoice}
-          onVoiceChange={(voice: string) => setSelectedVoice(voice)}
+          onVoiceChange={setSelectedVoice}
         />
-        <button className="icon-btn">
-          <i className="fas fa-cog"></i>
-        </button>
       </div>
 
       {/* Green Header with Shimmering Title */}
@@ -608,9 +620,6 @@ const HybridChatInterface: React.FC = () => {
       <div className="input-bar">
         <button className="icon-btn">
           <i className="fas fa-paperclip"></i>
-        </button>
-        <button className={`icon-btn ${isRecording ? 'active-mic' : ''}`} onClick={toggleRecording}>
-          <i className={`fas ${isRecording ? 'fa-microphone' : 'fa-microphone-slash'}`}></i>
         </button>
         <ChatInput
           onSendMessage={handleSendMessage}

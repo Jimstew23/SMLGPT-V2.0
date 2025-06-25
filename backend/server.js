@@ -335,58 +335,6 @@ app.post('/api/search', async (req, res) => {
   }
 });
 
-// Upload Pipeline Test Endpoint
-app.get('/api/test/upload-pipeline', async (req, res) => {
-  const { getAzureMultiService } = require('./services/azureMultiService');
-  const results = { timestamp: new Date().toISOString(), tests: {} };
-  
-  try {
-    const azureMultiService = getAzureMultiService();
-    
-    // Test 1: Blob Storage
-    try {
-      const testBuffer = Buffer.from('test upload pipeline');
-      const filename = `test_${Date.now()}.txt`;
-      const blobResult = await azureMultiService.uploadToBlob(filename, testBuffer, 'text/plain');
-      results.tests.blobStorage = { status: 'OK', url: blobResult.url };
-    } catch (error) {
-      results.tests.blobStorage = { status: 'FAILED', error: error.message };
-    }
-    
-    // Test 2: Computer Vision (with a simple test image)
-    try {
-      // Create a 1x1 pixel PNG buffer
-      const pngBuffer = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
-      await azureMultiService.analyzeImage(pngBuffer);
-      results.tests.computerVision = { status: 'OK' };
-    } catch (error) {
-      results.tests.computerVision = { status: 'FAILED', error: error.message };
-    }
-    
-    // Test 3: Document Intelligence
-    try {
-      const testPdf = Buffer.from('test document content');
-      await azureMultiService.analyzeDocument(testPdf, 'application/pdf');
-      results.tests.documentIntelligence = { status: 'OK' };
-    } catch (error) {
-      results.tests.documentIntelligence = { status: 'FAILED', error: error.message };
-    }
-    
-    // Test 4: Azure Search (if enabled)
-    try {
-      const searchService = require('./services/searchService');
-      await searchService.getSearchStatistics();
-      results.tests.azureSearch = { status: 'OK' };
-    } catch (error) {
-      results.tests.azureSearch = { status: 'FAILED', error: error.message };
-    }
-    
-    res.json(results);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Document Store Debug Endpoint
 app.get('/api/debug/documents', (req, res) => {
   try {

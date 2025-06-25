@@ -372,3 +372,46 @@ header .title {
 .icon-btn.active-speaker {
   color: #10b981; /* Green when active */
 }
+
+/* Speech Controls Styling */
+.speech-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.icon-btn.recording {
+  background-color: #ef4444;
+  color: white;
+  animation: pulse 1.5s infinite;
+}
+
+.recording-text {
+  margin-left: 5px;
+  font-size: 12px;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+.stop-speaking {
+  background-color: #f59e0b;
+  color: white;
+}
+
+.icon-btn.active {
+  background-color: #10b981;
+  color: white;
+}
+
+.status-indicator.connected {
+  color: #10b981;
+}
+
+.icon-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
