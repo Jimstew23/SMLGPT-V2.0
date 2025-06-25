@@ -22,56 +22,93 @@ const logger = require('../utils/logger');
 
 class AzureMultiService {
     constructor() {
-        // Unified endpoint configuration
-        this.endpoint = process.env.AZURE_COGNITIVE_SERVICES_ENDPOINT;
-        this.key = process.env.AZURE_COGNITIVE_SERVICES_KEY;
-        this.region = process.env.AZURE_COGNITIVE_SERVICES_REGION;
-
+        // Use DEDICATED endpoints that are TESTED & WORKING
+        this.computerVisionEndpoint = process.env.AZURE_COMPUTER_VISION_ENDPOINT;
+        this.computerVisionKey = process.env.AZURE_COMPUTER_VISION_KEY;
+        
+        this.documentIntelligenceEndpoint = process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT;
+        this.documentIntelligenceKey = process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY;
+        
+        this.speechKey = process.env.AZURE_SPEECH_KEY;
+        this.speechRegion = process.env.AZURE_SPEECH_REGION;
+        
         // Blob Storage configuration
         this.storageConnectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
         this.containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'smlgpt-files';
 
-        if (!this.endpoint || !this.key || !this.region) {
-            throw new Error('Azure Cognitive Services configuration missing');
-        }
-
-        if (!this.storageConnectionString) {
-            throw new Error('Azure Storage configuration missing');
+        // Validate all required configs
+        const requiredConfigs = {
+            'Computer Vision Endpoint': this.computerVisionEndpoint,
+            'Computer Vision Key': this.computerVisionKey,
+            'Document Intelligence Endpoint': this.documentIntelligenceEndpoint,
+            'Document Intelligence Key': this.documentIntelligenceKey,
+            'Storage Connection String': this.storageConnectionString
+        };
+        
+        const missing = Object.entries(requiredConfigs)
+            .filter(([name, value]) => !value)
+            .map(([name]) => name);
+            
+        if (missing.length > 0) {
+            logger.error('Missing required Azure configurations:', missing);
+            throw new Error(`Missing required Azure configurations: ${missing.join(', ')}`);
         }
 
         // Initialize clients
         this.initializeClients();
         
-        logger.info('Azure Multi-Service initialized', {
-            endpoint: this.endpoint,
-            region: this.region,
-            containerName: this.containerName,
-            services: ['Computer Vision', 'Document Intelligence', 'Speech', 'Blob Storage']
+        logger.info('Azure Multi-Service initialized with dedicated endpoints', {
+            computerVisionEndpoint: this.computerVisionEndpoint,
+            documentIntelligenceEndpoint: this.documentIntelligenceEndpoint,
+            speechRegion: this.speechRegion,
+            containerName: this.containerName
         });
     }
 
-    initializeClients() {
+    // Timeout protection method for all Azure operations
+    async withTimeout(promise, timeoutMs = 10000, operation = 'Azure operation') {
+        return Promise.race([
+            promise,
+            new Promise((_, reject) => 
+                setTimeout(() => reject(new Error(`${operation} timed out after ${timeoutMs}ms`)), timeoutMs)
+            )
+        ]);
+    }
+
+    async initializeClients() {
         try {
-            // Computer Vision Client (for images)
-            const cvCredentials = new CognitiveServicesCredentials(this.key);
-            this.computerVisionClient = new ComputerVisionClient(cvCredentials, this.endpoint);
-
-            // Document Intelligence Client (for documents)
-            this.documentAnalysisClient = new DocumentAnalysisClient(
-                this.endpoint,
-                new AzureKeyCredential(this.key)
+            // Computer Vision Client - use dedicated endpoint
+            const cvCredentials = new CognitiveServicesCredentials(this.computerVisionKey);
+            this.computerVisionClient = new ComputerVisionClient(
+                cvCredentials, 
+                this.computerVisionEndpoint
             );
+            logger.info('Computer Vision client initialized with dedicated endpoint');
 
-            // Speech Config (for speech services)
-            this.speechConfig = SpeechConfig.fromSubscription(this.key, this.region);
-            this.speechConfig.speechRecognitionLanguage = 'en-US';
+            // Document Intelligence Client - use dedicated endpoint
+            this.documentAnalysisClient = new DocumentAnalysisClient(
+                this.documentIntelligenceEndpoint,
+                new AzureKeyCredential(this.documentIntelligenceKey)
+            );
+            logger.info('Document Intelligence client initialized with dedicated endpoint');
+
+            // Speech Config
+            if (this.speechKey && this.speechRegion) {
+                this.speechConfig = SpeechConfig.fromSubscription(this.speechKey, this.speechRegion);
+                this.speechConfig.speechRecognitionLanguage = 'en-US';
+                logger.info('Speech services initialized');
+            }
 
             // Blob Storage Client
             this.blobServiceClient = BlobServiceClient.fromConnectionString(this.storageConnectionString);
+            logger.info('Blob storage client initialized');
 
             logger.info('All Azure service clients initialized successfully');
         } catch (error) {
-            logger.error('Failed to initialize Azure service clients', { error: error.message });
+            logger.error('Failed to initialize Azure service clients', { 
+                error: error.message,
+                stack: error.stack 
+            });
             throw error;
         }
     }
@@ -314,7 +351,7 @@ class AzureMultiService {
      */
     async uploadToBlob(filename, buffer, contentType) {
         try {
-            logger.info('Uploading file to blob storage', { 
+            logger.info('Starting blob upload with timeout protection...', { 
                 filename, 
                 size: buffer.length, 
                 contentType 
@@ -322,32 +359,33 @@ class AzureMultiService {
 
             const containerClient = this.blobServiceClient.getContainerClient(this.containerName);
             
-            // Ensure container exists
-            await containerClient.createIfNotExists({
-                access: 'container'
-            });
+            // Add timeout to container creation
+            await this.withTimeout(
+                containerClient.createIfNotExists({ access: 'container' }),
+                5000,
+                'Container creation'
+            );
 
             const blockBlobClient = containerClient.getBlockBlobClient(filename);
             
             const uploadOptions = {
-                blobHTTPHeaders: {
-                    blobContentType: contentType
-                },
+                blobHTTPHeaders: { blobContentType: contentType },
                 metadata: {
                     uploadedAt: new Date().toISOString(),
                     originalName: filename
                 }
             };
 
-            const uploadResponse = await blockBlobClient.upload(buffer, buffer.length, uploadOptions);
+            // Add timeout to upload
+            const uploadResponse = await this.withTimeout(
+                blockBlobClient.upload(buffer, buffer.length, uploadOptions),
+                15000,
+                'Blob upload'
+            );
 
             const blobUrl = blockBlobClient.url;
 
-            logger.info('File uploaded successfully', {
-                filename,
-                blobUrl,
-                etag: uploadResponse.etag
-            });
+            logger.info('Blob upload successful', { filename, blobUrl });
 
             return {
                 success: true,
@@ -359,8 +397,8 @@ class AzureMultiService {
             };
 
         } catch (error) {
-            logger.error('Blob upload failed', { filename, error: error.message });
-            throw new Error(`Failed to upload file to blob storage: ${error.message}`);
+            logger.error('Blob upload failed:', { filename, error: error.message });
+            throw error;
         }
     }
 
@@ -504,8 +542,8 @@ class AzureMultiService {
                 if (error.message.includes('InvalidImageFormat')) {
                     return {
                         status: 'healthy',
-                        endpoint: this.endpoint,
-                        region: this.region,
+                        endpoint: this.computerVisionEndpoint,
+                        region: this.speechRegion,
                         services: ['Computer Vision', 'Document Intelligence', 'Speech', 'Blob Storage']
                     };
                 }

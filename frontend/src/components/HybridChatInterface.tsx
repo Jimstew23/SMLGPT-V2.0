@@ -6,8 +6,11 @@ import ChatInput from './ChatInput';
 import VoiceSelector from './VoiceSelector';
 import DocumentSelector from './DocumentSelector';
 import SystemMessageWithThumbnail from './SystemMessageWithThumbnail';
+import UploadProgressMessage from './UploadProgressMessage';
 import { Message, FileUpload } from '../types';
 import apiService from '../services/api';
+import { compressImage, generateImageHash } from '../utils/imageUtils';
+import { cacheService } from '../services/cacheService';
 
 // Azure Speech credentials - you should move these to environment variables
 const AZURE_SPEECH_KEY = process.env.REACT_APP_AZURE_SPEECH_KEY || 'AH4cl0zbpVMDJOaIjvAKWaJGzSNdkbSUxUh2NgKX6SL8NjLn8XWAJQQJ99BDACHYHv6XJ3w3AAAEACOGUCi9';
@@ -21,6 +24,7 @@ interface UploadResponse {
     extractedText: string;
   };
   processing_time_ms: number;
+  cached?: boolean;
 }
 
 interface DocumentInfo {
@@ -28,11 +32,12 @@ interface DocumentInfo {
   filename: string;
   type: string;
   size: number;
+  blobUrl?: string;
   uploadedAt: string;
-  analysisResult: {
+  analysisResult?: {
     extractedText: string;
   };
-  processingTime: number;
+  processingTime?: number;
 }
 
 const HybridChatInterface: React.FC = () => {
@@ -58,6 +63,12 @@ const HybridChatInterface: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false); // Add upload state tracking
   const [uploadProgress, setUploadProgress] = useState<string>(''); // Add upload progress message
   
+  // Upload progress tracking
+  const [uploadStage, setUploadStage] = useState<'uploading' | 'processing' | 'analyzing' | 'complete' | 'error' | null>(null);
+  const [currentUploadProgress, setCurrentUploadProgress] = useState<number>(0);
+  const [uploadError, setUploadError] = useState<string>('');
+  const [currentUploadFilename, setCurrentUploadFilename] = useState<string>('');
+
   // File cache for immediate thumbnail display
   const [fileCache, setFileCache] = useState<Map<string, string>>(new Map());
   
@@ -155,32 +166,36 @@ const HybridChatInterface: React.FC = () => {
   };
 
   const sendTextMessage = async (content: string) => {
-    // DEBUG: Log current document selection state
-    console.log('🔍 Chat Debug - Sending message:', content.substring(0, 50) + '...');
-    console.log('🔍 Chat Debug - Uploaded documents:', uploadedDocuments.length);
-    console.log('🔍 Chat Debug - Selected documents:', selectedDocuments);
-    console.log('🔍 Chat Debug - Selected documents length:', selectedDocuments.length);
+    // Add detailed debugging
+    console.log('=== CHAT DEBUG START ===');
+    console.log('📸 Uploaded documents:', uploadedDocuments);
+    console.log('✅ Selected documents:', selectedDocuments);
+    console.log('📝 Message content:', content);
     
-    // CRITICAL FIX: Ensure we always include the most recent uploaded image for Vision analysis
+    // Debug: Show all uploaded images
+    const uploadedImages = uploadedDocuments.filter(doc => doc.type.startsWith('image/'));
+    console.log('🖼️ Uploaded images:', uploadedImages);
+    
     let documentReferences = [...selectedDocuments];
     
-    // If no documents are selected but we have uploaded documents, auto-select the most recent image
+    // ENHANCED AUTO-SELECTION LOGIC
     if (documentReferences.length === 0 && uploadedDocuments.length > 0) {
-      // Find the most recent uploaded image (for Vision analysis)
-      const recentImages = uploadedDocuments
-        .filter(doc => doc.type.startsWith('image/'))
-        .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
-      
-      if (recentImages.length > 0) {
-        documentReferences = [recentImages[0].id];
-        console.log('🔍 Chat Debug - Auto-selected recent image:', recentImages[0].filename);
+        // Find the most recent uploaded image
+        const recentImages = uploadedDocuments
+            .filter(doc => doc.type.startsWith('image/'))
+            .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
         
-        // Update selected documents state to reflect auto-selection
-        setSelectedDocuments(documentReferences);
-      }
+        if (recentImages.length > 0) {
+            documentReferences = [recentImages[0].id];
+            console.log('🎯 Auto-selected image:', recentImages[0]);
+            setSelectedDocuments(documentReferences);
+        } else {
+            console.warn('⚠️ No images found to auto-select');
+        }
     }
     
-    console.log('🔍 Chat Debug - Final document references:', documentReferences);
+    console.log('📤 Final document references being sent:', documentReferences);
+    console.log('=== CHAT DEBUG END ===');
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -228,32 +243,154 @@ const HybridChatInterface: React.FC = () => {
     }
   };
 
-  // Enhanced file upload handler with immediate thumbnail display
+  // Enhanced file upload handler with compression, caching, and progress tracking
   const handleFileUpload = async (files: FileList) => {
     if (files.length === 0) return;
 
     const file = files[0]; // Handle single file for ChatGPT-style UX
     setIsUploading(true);
-    setUploadProgress(`Uploading ${file.name}...`);
+    setUploadStage('uploading');
+    setCurrentUploadProgress(0);
+    setUploadError('');
+    setCurrentUploadFilename(file.name);
 
     try {
-      // Create preview URL for immediate display
-      const previewUrl = URL.createObjectURL(file);
+      let processedFile = file;
       
-      // Cache the preview URL
+      // Step 1: Image compression for large images
+      if (file.type.startsWith('image/') && file.size > 500 * 1024) { // 500KB threshold
+        setUploadStage('processing');
+        setCurrentUploadProgress(10);
+        
+        try {
+          processedFile = await compressImage(file);
+          console.log(`Image compressed: ${file.size} → ${processedFile.size} bytes (${Math.round((1 - processedFile.size / file.size) * 100)}% reduction)`);
+        } catch (compressionError) {
+          console.warn('Image compression failed, using original:', compressionError);
+          processedFile = file;
+        }
+      }
+
+      // Step 2: Check cache for existing analysis
+      if (file.type.startsWith('image/')) {
+        const imageHash = await generateImageHash(file);
+        const cachedResult = cacheService.getCachedAnalysis(imageHash);
+        
+        if (cachedResult) {
+          console.log('Using cached analysis for image');
+          setUploadStage('complete');
+          setCurrentUploadProgress(100);
+          
+          // Create thumbnail message with cached data
+          const previewUrl = URL.createObjectURL(file);
+          const messageId = Date.now().toString();
+          
+          const systemMessage: Message = {
+            id: messageId,
+            role: 'system',
+            content: `✅ File "${file.name}" uploaded successfully (cached result)`,
+            timestamp: new Date().toISOString(),
+            component: (
+              <SystemMessageWithThumbnail 
+                file={{
+                  filename: file.name,
+                  type: file.type,
+                  previewUrl: previewUrl,
+                  size: file.size,
+                  isLoading: false
+                }}
+              />
+            )
+          };
+
+          setMessages(prev => [...prev, systemMessage]);
+          setThumbnailMessages(prev => new Map(prev.set(file.name, messageId)));
+          
+          // Update documents list
+          const newDocument: DocumentInfo = {
+            id: cachedResult.file_id || `cached-${Date.now()}`,
+            filename: file.name,
+            type: file.type,
+            size: file.size,
+            blobUrl: cachedResult.blob_url || previewUrl,
+            uploadedAt: new Date().toISOString()
+          };
+          
+          setUploadedDocuments(prev => [...prev, newDocument]);
+          setTimeout(() => {
+            setUploadStage(null);
+            setIsUploading(false);
+          }, 1000);
+          return;
+        }
+      }
+
+      // Step 3: Create preview URL for immediate display
+      const previewUrl = URL.createObjectURL(file);
       setFileCache(prev => new Map(prev.set(file.name, previewUrl)));
       
-      // Check if we already have a thumbnail message for this file
-      const existingMessageId = thumbnailMessages.get(file.name);
-      let messageId = Date.now().toString();
+      // Step 4: Add system message with thumbnail immediately
+      const messageId = Date.now().toString();
+      const systemMessage: Message = {
+        id: messageId,
+        role: 'system',
+        content: '',
+        timestamp: new Date().toISOString(),
+        component: (
+          <SystemMessageWithThumbnail 
+            file={{
+              filename: file.name,
+              type: file.type,
+              previewUrl: previewUrl,
+              size: file.size,
+              isLoading: true
+            }}
+          />
+        )
+      };
+
+      setMessages(prev => [...prev, systemMessage]);
+      setThumbnailMessages(prev => new Map(prev.set(file.name, messageId)));
+
+      // Step 5: Upload with progress tracking
+      setUploadStage('uploading');
+      setCurrentUploadProgress(20);
+
+      const response = await apiService.uploadFileWithProgress(processedFile, 'safety', {
+        onUploadProgress: (progressEvent) => {
+          const progress = Math.round((progressEvent.loaded / progressEvent.total) * 70) + 20; // 20-90%
+          setCurrentUploadProgress(progress);
+        }
+      }) as UploadResponse;
       
-      if (existingMessageId) {
-        // Update existing message instead of creating a new one
+      setUploadStage('analyzing');
+      setCurrentUploadProgress(95);
+      
+      if (response.status === 'success') {
+        // Cache the result
+        if (file.type.startsWith('image/')) {
+          const imageHash = await generateImageHash(file);
+          cacheService.cacheAnalysis(imageHash, response);
+        }
+        
+        // Update uploaded documents list
+        const newDocument: DocumentInfo = {
+          id: response.file_id,
+          filename: file.name,
+          type: file.type,
+          size: file.size,
+          blobUrl: response.blob_url,
+          uploadedAt: new Date().toISOString()
+        };
+        
+        setUploadedDocuments(prev => [...prev, newDocument]);
+        
+        // Update system message to remove loading state
         setMessages(prev => prev.map(msg => {
-          if (msg.id === existingMessageId) {
+          if (msg.id === messageId) {
             return {
               ...msg,
-              timestamp: new Date().toISOString(),
+              content: `✅ File "${file.name}" uploaded and analyzed successfully${response.cached ? ' (cached)' : ''} - Processing time: ${response.processing_time_ms}ms`,
               component: (
                 <SystemMessageWithThumbnail 
                   file={{
@@ -261,7 +398,7 @@ const HybridChatInterface: React.FC = () => {
                     type: file.type,
                     previewUrl: previewUrl,
                     size: file.size,
-                    isLoading: true // Show loading state
+                    isLoading: false
                   }}
                 />
               )
@@ -269,85 +406,27 @@ const HybridChatInterface: React.FC = () => {
           }
           return msg;
         }));
-        messageId = existingMessageId;
+
+        setUploadStage('complete');
+        setCurrentUploadProgress(100);
+        
+        toast.success(`File uploaded successfully${response.cached ? ' (cached)' : ''}!`);
       } else {
-        // Add system message with thumbnail immediately (with loading state)
-        const systemMessage: Message = {
-          id: messageId,
-          role: 'system',
-          content: '',
-          timestamp: new Date().toISOString(),
-          component: (
-            <SystemMessageWithThumbnail 
-              file={{
-                filename: file.name,
-                type: file.type,
-                previewUrl: previewUrl,
-                size: file.size,
-                isLoading: true // Show loading state
-              }}
-            />
-          )
-        };
-
-        setMessages(prev => [...prev, systemMessage]);
-        
-        // Track this message ID for this filename to avoid duplicates
-        setThumbnailMessages(prev => new Map(prev.set(file.name, messageId)));
-      }
-
-      // Upload to backend
-      const response = await apiService.uploadFile(file) as UploadResponse;
-      
-      if (response.status === 'success') {
-        // Update uploaded documents list for backend integration
-        const newDocument: DocumentInfo = {
-          id: response.file_id,
-          filename: file.name,
-          type: file.type,
-          size: file.size,
-          uploadedAt: new Date().toISOString(),
-          analysisResult: response.analysis,
-          processingTime: response.processing_time_ms
-        };
-
-        setUploadedDocuments(prev => [...prev, newDocument]);
-        
-        // Auto-select the uploaded document for next message
-        setSelectedDocuments([response.file_id]);
-        
-        // Find and update the thumbnail message to remove loading state
-        const messageId = thumbnailMessages.get(file.name);
-        if (messageId) {
-          setMessages(prev => prev.map(msg => {
-            if (msg.id === messageId) {
-              return {
-                ...msg,
-                component: (
-                  <SystemMessageWithThumbnail 
-                    file={{
-                      filename: file.name,
-                      type: file.type,
-                      previewUrl: fileCache.get(file.name),
-                      size: file.size,
-                      isLoading: false // Remove loading state
-                    }}
-                  />
-                )
-              };
-            }
-            return msg;
-          }));
-        }
-
-        toast.success(`File uploaded successfully: ${file.name}`);
+        throw new Error('Upload failed');
       }
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error(`Failed to upload file: ${file.name}`);
+      setUploadStage('error');
+      setUploadError(error instanceof Error ? error.message : 'Upload failed');
+      toast.error(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
-      setIsUploading(false);
-      setUploadProgress('');
+      // Reset upload state after delay
+      setTimeout(() => {
+        setUploadStage(null);
+        setCurrentUploadProgress(0);
+        setIsUploading(false);
+        setUploadError('');
+      }, 2000);
     }
   };
 
@@ -429,6 +508,18 @@ const HybridChatInterface: React.FC = () => {
       {/* Chat Content */}
       <div className="container">
         <div className="chat-container">
+          {/* Upload Progress Display */}
+          {uploadStage && (
+            <div className="upload-progress-container">
+              <UploadProgressMessage
+                stage={uploadStage}
+                progress={currentUploadProgress}
+                error={uploadError}
+                filename={currentUploadFilename}
+              />
+            </div>
+          )}
+          
           {messages.map((message) => (
             <div 
               key={message.id} 

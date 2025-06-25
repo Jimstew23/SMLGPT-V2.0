@@ -4,6 +4,7 @@ const searchService = require('./searchService');
 const enhancedSafetyService = require('./enhancedSafetyService');
 const documentStore = require('./documentStore');
 const logger = require('../utils/logger');
+const { getAzureMultiService } = require('./azureMultiService');
 const fs = require('fs').promises;
 const path = require('path');
 const fetch = require('node-fetch'); // Required for fetchImageFromBlobUrl method
@@ -236,10 +237,11 @@ Category: ${doc.category || 'General'}
   async buildContextFromDocuments(document_references) {
     try {
       if (!document_references || document_references.length === 0) {
+        logger.warn('No document references provided');
         return '';
       }
 
-      logger.info('Building context from documents', { 
+      logger.info('=== BUILDING DOCUMENT CONTEXT ===', { 
         documentCount: document_references.length,
         documentIds: document_references 
       });
@@ -247,9 +249,19 @@ Category: ${doc.category || 'General'}
       const documents = documentStore.getDocuments(document_references);
       
       if (documents.length === 0) {
-        logger.warn('No documents found for provided references', { document_references });
+        logger.error('No documents found in store for IDs:', document_references);
+        // Try to list all documents in store for debugging
+        const allDocs = documentStore.getAllDocuments();
+        logger.info('All documents in store:', allDocs.map(d => ({ id: d.id, filename: d.filename })));
         return '';
       }
+
+      logger.info('Found documents:', documents.map(d => ({
+        id: d.id,
+        filename: d.filename,
+        type: d.contentType,
+        hasBlobUrl: !!d.blobUrl
+      })));
 
       // Build formatted context from document content
       const contextParts = documents.map(doc => {
@@ -258,23 +270,25 @@ Category: ${doc.category || 'General'}
           content.substring(0, 1500) + '\n[Content truncated...]' : 
           content;
         
-        // Add special handling for images
+        // Special handling for images
         let imageInfo = '';
         if (doc.contentType && doc.contentType.startsWith('image/')) {
-          imageInfo = `\nIMAGE FILE: This is an image file. For detailed visual analysis, use the analyzeImageSafety method with the image data.
-File URL: ${doc.blobUrl || 'Not available'}`;
+          imageInfo = `\nIMAGE FILE: ${doc.filename}
+Type: ${doc.contentType}
+Blob URL: ${doc.blobUrl || 'NOT FOUND - THIS IS THE PROBLEM!'}
+This is an image that should be analyzed using vision capabilities.`;
         }
         
         return `--- Document: ${doc.filename} ---
 File Type: ${doc.contentType}
 Uploaded: ${doc.uploadedAt}
-Content:
-${contentPreview}${imageInfo}`;
+Document ID: ${doc.id}
+Content: ${contentPreview}${imageInfo}`;
       });
 
       const fullContext = contextParts.join('\n\n');
       
-      logger.info('Document context built successfully', {
+      logger.info('=== DOCUMENT CONTEXT BUILT ===', {
         documentsUsed: documents.length,
         totalContextLength: fullContext.length,
         documentNames: documents.map(d => d.filename),
@@ -288,13 +302,14 @@ ${contentPreview}${imageInfo}`;
     }
   }
 
-  /**
-   * Get referenced images from document references for vision analysis
-   * @param {string[]} documentReferences - Array of document IDs to check
-   * @returns {Promise<Array>} Array of image documents with metadata
-   */
   async getReferencedImages(documentReferences) {
+    logger.info('=== GETTING REFERENCED IMAGES ===', {
+      documentReferences,
+      count: documentReferences ? documentReferences.length : 0
+    });
+
     if (!documentReferences || documentReferences.length === 0) {
+      logger.warn('No document references provided for image analysis');
       return [];
     }
 
@@ -303,22 +318,27 @@ ${contentPreview}${imageInfo}`;
     for (const docId of documentReferences) {
       try {
         const document = documentStore.getDocument(docId);
+        logger.info(`Checking document ${docId}:`, {
+          found: !!document,
+          filename: document?.filename,
+          type: document?.contentType,
+          hasBlobUrl: !!document?.blobUrl
+        });
         
         if (document && this.isImageFile(document.filename, document.contentType)) {
-          // Ensure we have blob URL for image access
           if (document.blobUrl) {
             imageDocuments.push({
               id: document.id,
               filename: document.filename,
-              mimeType: document.contentType, // Use contentType as mimeType for consistency
+              mimeType: document.contentType,
               blobUrl: document.blobUrl,
               extractedText: document.extractedText || '',
               metadata: document.metadata || {}
             });
             
-            logger.info(`Found image document for vision analysis: ${document.filename}`);
+            logger.info(`✅ Found image for vision analysis: ${document.filename}`);
           } else {
-            logger.warn(`Image document ${document.filename} missing blobUrl for vision analysis`);
+            logger.error(`❌ Image ${document.filename} missing blobUrl!`);
           }
         }
       } catch (error) {
@@ -326,37 +346,21 @@ ${contentPreview}${imageInfo}`;
       }
     }
     
-    logger.info(`Retrieved ${imageDocuments.length} image documents for vision analysis`);
+    logger.info(`=== FOUND ${imageDocuments.length} IMAGES FOR ANALYSIS ===`);
     return imageDocuments;
   }
 
-  /**
-   * Check if a file is an image based on filename and MIME type
-   * @param {string} filename - File name
-   * @param {string} mimeType - MIME type
-   * @returns {boolean} True if file is an image
-   */
-  isImageFile(filename, mimeType) {
-    // Check MIME type first (most reliable)
-    if (mimeType && mimeType.startsWith('image/')) {
+  isImageFile(filename, contentType) {
+    if (contentType && contentType.startsWith('image/')) {
       return true;
     }
-    
-    // Fallback to file extension check
     if (filename) {
-      const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.tif', '.svg'];
-      const extension = filename.toLowerCase().substring(filename.lastIndexOf('.'));
-      return imageExtensions.includes(extension);
+      const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+      return imageExtensions.some(ext => filename.toLowerCase().endsWith(ext));
     }
-    
     return false;
   }
 
-  /**
-   * Fetches an image from Azure Blob Storage with enhanced error handling
-   * @param {string} blobUrl - Azure Blob Storage URL for the image
-   * @returns {Promise<Buffer>} - Buffer containing the image data
-   */
   async fetchImageFromBlobUrl(blobUrl) {
     try {
       logger.info('Fetching image from blob URL', {

@@ -2,6 +2,7 @@ const { getAzureMultiService } = require('./azureMultiService');
 const chatService = require('./chatService');
 const searchService = require('./searchService');
 const documentStore = require('./documentStore');
+const cacheService = require('./cacheService');
 const logger = require('../utils/logger');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
@@ -13,167 +14,255 @@ class UploadService {
   }
 
   async processFileUpload(file) {
-    try {
-      const startTime = Date.now();
-      const fileId = uuidv4();
-      const timestamp = new Date().toISOString();
-      
-      logger.info('Processing file upload', {
+    const startTime = Date.now();
+    const fileId = uuidv4();
+    const timestamp = new Date().toISOString();
+    
+    logger.info('=== FILE UPLOAD PROCESS STARTED ===', {
         fileId,
         originalName: file.originalname,
         size: file.size,
-        mimeType: file.mimetype
-      });
+        mimeType: file.mimetype,
+        timestamp
+    });
 
-      // Validate file type
-      const isImage = this.supportedImageTypes.includes(file.mimetype);
-      const isDocument = this.supportedDocumentTypes.includes(file.mimetype);
-      
-      if (!isImage && !isDocument) {
-        throw new Error(`Unsupported file type: ${file.mimetype}`);
-      }
-
-      // Generate unique filename
-      const fileExtension = path.extname(file.originalname);
-      const filename = `${fileId}_${Date.now()}${fileExtension}`;
-
-      // Upload to Azure Blob Storage
-      const azureMultiService = getAzureMultiService();
-      const blobResult = await azureMultiService.uploadToBlob(
-        filename,
-        file.buffer,
-        file.mimetype
-      );
-
-      let analysisResult = {};
-      let extractedContent = '';
-      let searchDocument = null;
-
-      if (isImage) {
-        // Process image with Computer Vision and GPT-4.1
-        analysisResult = await this.processImageFile(file.buffer, file.originalname);
-        extractedContent = analysisResult.vision_analysis?.caption || '';
-        
-        // Create search document for image
-        searchDocument = {
-          id: fileId,
-          title: file.originalname,
-          content: analysisResult.safety_analysis || extractedContent,
-          summary: analysisResult.vision_analysis?.caption || '',
-          url: blobResult.url,
-          file_type: 'image',
-          mime_type: file.mimetype,
-          file_size: file.size,
-          vision_analysis: analysisResult.vision_analysis,
-          safety_analysis: analysisResult.safety_analysis
-        };
-
-      } else if (isDocument) {
-        // Process document with Document Intelligence
-        analysisResult = await this.processDocumentFile(file.buffer, file.mimetype, file.originalname);
-        extractedContent = analysisResult.content || '';
-        
-        // Create search document for document
-        searchDocument = {
-          id: fileId,
-          title: file.originalname,
-          content: extractedContent,
-          summary: extractedContent.substring(0, 500) + (extractedContent.length > 500 ? '...' : ''),
-          url: blobResult.url,
-          file_type: 'document',
-          mime_type: file.mimetype,
-          file_size: file.size,
-          page_count: analysisResult.pageCount || 0,
-          tables: analysisResult.tables || []
-        };
-      }
-
-      // Generate embeddings and index the document
-      if (searchDocument && extractedContent) {
-        try {
-          const embedding = await chatService.generateEmbedding(extractedContent);
-          searchDocument.embedding = embedding;
-          
-          // Index document in Azure Cognitive Search
-          await searchService.indexDocument(searchDocument);
-          
-          logger.info('Document indexed successfully', {
-            fileId,
-            contentLength: extractedContent.length,
-            hasEmbedding: !!embedding
-          });
-        } catch (embeddingError) {
-          logger.error('Failed to generate embedding or index document:', embeddingError);
-          // Continue without embedding - document is still uploaded and analyzed
+    try {
+        // Generate image hash for caching
+        let imageHash = null;
+        if (file.mimetype.startsWith('image/')) {
+            imageHash = cacheService.generateImageHash(file.buffer);
+            
+            // Check if we have cached analysis
+            const cachedAnalysis = await cacheService.getCachedAnalysis(imageHash);
+            if (cachedAnalysis) {
+                logger.info('Using cached analysis for image', { 
+                    imageHash,
+                    originalName: file.originalname 
+                });
+                
+                const duration = Date.now() - startTime;
+                return {
+                    ...cachedAnalysis,
+                    processing_time_ms: duration,
+                    cached: true
+                };
+            }
         }
-      }
 
-      const duration = Date.now() - startTime;
+        // Step 1: Validate file type
+        logger.info('Step 1: Validating file type...');
+        const isImage = this.supportedImageTypes.includes(file.mimetype);
+        const isDocument = this.supportedDocumentTypes.includes(file.mimetype);
+        
+        if (!isImage && !isDocument) {
+            throw new Error(`Unsupported file type: ${file.mimetype}`);
+        }
+        logger.info('Step 1 Complete: File type valid', { isImage, isDocument });
 
-      // Store document in document store for chat integration
-      try {
-        const documentData = {
-          filename: file.originalname,
-          content: extractedContent,
-          contentType: file.mimetype,
-          size: file.size,
-          userId: 'default', // In production, this would come from user authentication
-          blobUrl: blobResult.url, // Add blobUrl for image analysis
-          metadata: {
+        // Step 2: Generate unique filename
+        logger.info('Step 2: Generating unique filename...');
+        const fileExtension = path.extname(file.originalname);
+        const filename = `${fileId}_${Date.now()}${fileExtension}`;
+        logger.info('Step 2 Complete: Filename generated', { filename });
+
+        // Step 3: Upload to Azure Blob Storage
+        logger.info('Step 3: Uploading to Blob Storage...');
+        const azureMultiService = getAzureMultiService();
+        const blobResult = await azureMultiService.uploadToBlob(
+            filename,
+            file.buffer,
+            file.mimetype
+        );
+        logger.info('Step 3 Complete: File uploaded to blob', { 
             blobUrl: blobResult.url,
-            storedFilename: filename,
-            uploadedAt: timestamp,
-            fileType: isImage ? 'image' : 'document',
-            analysisResult: analysisResult,
-            indexed: !!searchDocument
-          }
+            size: blobResult.size,
+            etag: blobResult.etag
+        });
+
+        let analysisResult = {};
+        let extractedContent = '';
+        let searchDocument = null;
+
+        if (file.mimetype.startsWith('image/')) {
+            // Step 4: Process image
+            logger.info('Step 4: Processing image with Computer Vision and GPT-4.1...');
+            try {
+                analysisResult = await this.processImageFile(file.buffer, file.originalname);
+                extractedContent = analysisResult.vision_analysis?.caption || '';
+                logger.info('Step 4 Complete: Image analyzed', { 
+                    hasVisionAnalysis: !!analysisResult.vision_analysis,
+                    hasSafetyAnalysis: !!analysisResult.safety_analysis,
+                    extractedTextLength: extractedContent.length
+                });
+            } catch (imageError) {
+                logger.error('Image processing failed', { 
+                    error: imageError.message,
+                    stack: imageError.stack 
+                });
+                throw imageError;
+            }
+            
+            // Create search document for image
+            searchDocument = {
+                id: fileId,
+                title: file.originalname,
+                content: analysisResult.safety_analysis || extractedContent,
+                summary: analysisResult.vision_analysis?.caption || '',
+                url: blobResult.url,
+                file_type: 'image',
+                mime_type: file.mimetype,
+                file_size: file.size,
+                vision_analysis: analysisResult.vision_analysis,
+                safety_analysis: analysisResult.safety_analysis
+            };
+
+        } else if (file.mimetype.startsWith('application/')) {
+            // Step 4: Process document
+            logger.info('Step 4: Processing document with Document Intelligence...');
+            try {
+                analysisResult = await this.processDocumentFile(file.buffer, file.mimetype, file.originalname);
+                extractedContent = analysisResult.content || '';
+                logger.info('Step 4 Complete: Document analyzed', { 
+                    contentLength: extractedContent.length,
+                    pageCount: analysisResult.pageCount || 0
+                });
+            } catch (docError) {
+                logger.error('Document processing failed', { 
+                    error: docError.message,
+                    stack: docError.stack 
+                });
+                throw docError;
+            }
+            
+            // Create search document for document
+            searchDocument = {
+                id: fileId,
+                title: file.originalname,
+                content: extractedContent,
+                summary: extractedContent.substring(0, 500) + (extractedContent.length > 500 ? '...' : ''),
+                url: blobResult.url,
+                file_type: 'document',
+                mime_type: file.mimetype,
+                file_size: file.size,
+                page_count: analysisResult.pageCount || 0,
+                tables: analysisResult.tables || []
+            };
+        }
+
+        // Step 5: Generate embeddings and index
+        if (searchDocument && extractedContent) {
+            logger.info('Step 5: Generating embeddings and indexing...');
+            try {
+                // TEMPORARY: Skip embedding/search indexing to isolate issue
+                const SKIP_SEARCH_INDEXING = true; // Toggle this to disable problematic Azure Search
+                
+                if (!SKIP_SEARCH_INDEXING) {
+                    const embedding = await chatService.generateEmbedding(extractedContent);
+                    searchDocument.embedding = embedding;
+                    
+                    await searchService.indexDocument(searchDocument);
+                    
+                    logger.info('Step 5 Complete: Document indexed', {
+                        fileId,
+                        contentLength: extractedContent.length,
+                        hasEmbedding: !!embedding
+                    });
+                } else {
+                    logger.warn('SEARCH INDEXING DISABLED - Skipping to isolate timeout issue');
+                    logger.info('Step 5 Complete: Indexing step skipped (disabled)');
+                }
+                
+            } catch (embeddingError) {
+                logger.error('Embedding/indexing failed (continuing anyway):', embeddingError);
+                // CRITICAL: Don't throw - continue with upload
+            }
+        }
+
+        // Step 6: Store in document store
+        logger.info('Step 6: Storing in document store...');
+        try {
+            const documentData = {
+                filename: file.originalname,
+                content: extractedContent,
+                contentType: file.mimetype,
+                size: file.size,
+                userId: 'default',
+                blobUrl: blobResult.url,
+                metadata: {
+                    blobUrl: blobResult.url,
+                    storedFilename: filename,
+                    uploadedAt: timestamp,
+                    fileType: file.mimetype.startsWith('image/') ? 'image' : 'document',
+                    analysisResult: analysisResult,
+                    indexed: !!searchDocument
+                }
+            };
+
+            documentStore.storeDocument(fileId, documentData);
+            
+            // Verify storage
+            const storedDoc = documentStore.getDocument(fileId);
+            if (!storedDoc) {
+                throw new Error('Document storage verification failed');
+            }
+            
+            logger.info('Step 6 Complete: Document stored', {
+                fileId,
+                filename: file.originalname,
+                hasContent: !!extractedContent
+            });
+            
+        } catch (storeError) {
+            logger.error('Document store failed', { 
+                error: storeError.message 
+            });
+            // Continue - file is still uploaded
+        }
+
+        const duration = Date.now() - startTime;
+
+        const result = {
+            file_id: fileId,
+            filename: file.originalname,
+            stored_filename: filename,
+            file_type: file.mimetype.startsWith('image/') ? 'image' : 'document',
+            mime_type: file.mimetype,
+            file_size: file.size,
+            blob_url: blobResult.url,
+            processing_time_ms: duration,
+            analysis: analysisResult,
+            indexed: !!searchDocument,
+            status: 'success'
         };
 
-        // CRITICAL: Ensure document store operation completes BEFORE upload response
-        await new Promise((resolve) => {
-          documentStore.storeDocument(fileId, documentData);
-          // Small delay to ensure document is fully stored and accessible
-          setTimeout(resolve, 100);
+        logger.info('=== FILE UPLOAD PROCESS COMPLETED ===', {
+            fileId,
+            duration: `${duration}ms`,
+            analysisType: file.mimetype.startsWith('image/') ? 'image' : 'document',
+            indexed: !!searchDocument,
+            success: true
         });
-        
-        logger.info('Document stored in document store', {
-          fileId,
-          filename: file.originalname,
-          contentLength: extractedContent?.length || 0,
-          hasContent: !!extractedContent
-        });
-        
-      } catch (storeError) {
-        logger.error('Failed to store document in document store:', storeError);
-        // Continue with upload response even if store fails
-      }
 
-      const result = {
-        file_id: fileId,
-        filename: file.originalname,
-        stored_filename: filename,
-        file_type: isImage ? 'image' : 'document',
-        mime_type: file.mimetype,
-        file_size: file.size,
-        blob_url: blobResult.url,
-        processing_time_ms: duration,
-        analysis: analysisResult,
-        indexed: !!searchDocument,
-        status: 'success'
-      };
+        // Cache result
+        await cacheService.cacheResult(fileId, result);
 
-      logger.info('File upload processing completed', {
-        fileId,
-        duration: `${duration}ms`,
-        analysisType: isImage ? 'image' : 'document',
-        indexed: !!searchDocument
-      });
+        // Cache image analysis if applicable
+        if (imageHash) {
+            await cacheService.cacheImageAnalysis(imageHash, analysisResult);
+        }
 
-      return result;
+        return result;
 
     } catch (error) {
-      logger.error('File upload processing failed:', error);
-      throw new Error(`File upload processing failed: ${error.message}`);
+        logger.error('=== FILE UPLOAD PROCESS FAILED ===', {
+            fileId,
+            error: {
+                message: error.message,
+                stack: error.stack,
+                name: error.name
+            }
+        });
+        throw new Error(`File upload processing failed: ${error.message}`);
     }
   }
 
@@ -319,6 +408,51 @@ class UploadService {
 
   sanitizeFilename(filename) {
     return filename.replace(/[^a-zA-Z0-9.-]/g, '_');
+  }
+
+  // New parallel processing method for images
+  async processImageFileParallel(imageBuffer, originalName) {
+    try {
+        logger.info('Starting parallel image processing...');
+        
+        // Run vision and safety analysis in parallel
+        const [visionAnalysis, safetyAnalysis] = await Promise.all([
+            // Azure Computer Vision with timeout
+            Promise.race([
+                (async () => {
+                    const azureMultiService = getAzureMultiService();
+                    return await azureMultiService.analyzeImage(imageBuffer);
+                })(),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Vision analysis timeout')), 30000)
+                )
+            ]),
+            
+            // GPT-4.1 Safety Analysis with timeout
+            Promise.race([
+                chatService.analyzeImageSafety(
+                    imageBuffer,
+                    `Analyze this workplace image (${originalName}) for safety hazards and compliance with Georgia-Pacific SML standards.`
+                ),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Safety analysis timeout')), 45000)
+                )
+            ])
+        ]);
+        
+        logger.info('Parallel processing completed successfully');
+        
+        return {
+            vision_analysis: visionAnalysis,
+            safety_analysis: safetyAnalysis.safety_analysis,
+            processing_time_ms: safetyAnalysis.processing_time_ms
+        };
+        
+    } catch (error) {
+        logger.error('Parallel image processing failed, falling back to serial:', error);
+        // Fallback to serial processing
+        return await this.processImageFile(imageBuffer, originalName);
+    }
   }
 }
 

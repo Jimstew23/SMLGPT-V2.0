@@ -81,22 +81,27 @@ app.get('/health', (req, res) => {
 // Chat endpoint - Main GPT-4.1 chat with RAG
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, conversation_id, include_search = false, document_references = [] } = req.body;
+    const { message, conversation_history, include_context, document_references } = req.body;
+    
+    // DEBUG LOGGING
+    logger.info('=== CHAT REQUEST RECEIVED ===', {
+      message: message.substring(0, 50),
+      hasHistory: !!conversation_history,
+      includeContext: include_context,
+      documentReferences: document_references,
+      documentCount: document_references ? document_references.length : 0
+    });
     
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
     }
     
-    logger.info(`Chat request received: ${message.substring(0, 100)}...`, {
-      documentReferences: document_references,
-      hasDocuments: document_references.length > 0
-    });
-    
+    // Your existing chat processing...
     const response = await chatService.processChat({
       message,
-      conversation_id,
-      include_search,
-      document_references
+      conversation_id: req.session?.conversation_id,
+      include_search: include_context,
+      document_references: document_references || []
     });
     
     res.json(response);
@@ -265,6 +270,156 @@ app.get('/api/health', (req, res) => {
     version: '2.0.0',
     environment: process.env.NODE_ENV || 'development'
   });
+});
+
+// Test endpoint for Azure services
+app.get('/api/test/azure-services', async (req, res) => {
+  const { getAzureMultiService } = require('./services/azureMultiService');
+  const results = {
+    timestamp: new Date().toISOString(),
+    services: {}
+  };
+  
+  try {
+    // Test Multi-Service initialization
+    const azureMultiService = getAzureMultiService();
+    results.services.multiService = 'Initialized';
+    
+    // Test Blob Storage
+    try {
+      const containerClient = azureMultiService.blobServiceClient
+        .getContainerClient(process.env.AZURE_STORAGE_CONTAINER_NAME);
+      const exists = await containerClient.exists();
+      results.services.blobStorage = exists ? 'Connected' : 'Container not found';
+    } catch (error) {
+      results.services.blobStorage = `Failed: ${error.message}`;
+    }
+    
+    // Show configured endpoints
+    results.endpoints = {
+      computerVision: process.env.AZURE_COMPUTER_VISION_ENDPOINT,
+      documentIntelligence: process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT,
+      openAI: process.env.AZURE_OPENAI_ENDPOINT,
+      speech: process.env.AZURE_SPEECH_ENDPOINT
+    };
+    
+    res.json(results);
+  } catch (error) {
+    res.status(500).json({ 
+      error: error.message,
+      stack: error.stack 
+    });
+  }
+});
+
+// Search endpoint
+app.post('/api/search', async (req, res) => {
+  try {
+    const { query, top = 10, include_embeddings = false } = req.body;
+    
+    if (!query) {
+      return res.status(400).json({ error: 'Query is required' });
+    }
+    
+    const results = await searchService.searchDocuments({
+      query,
+      top,
+      include_embeddings
+    });
+    
+    res.json(results);
+  } catch (error) {
+    console.error('[ERROR] /api/search threw:', error);
+    logger.error('Search endpoint error:', error);
+    res.status(500).json({ error: error.message, stack: error.stack });
+  }
+});
+
+// Upload Pipeline Test Endpoint
+app.get('/api/test/upload-pipeline', async (req, res) => {
+  const { getAzureMultiService } = require('./services/azureMultiService');
+  const results = { timestamp: new Date().toISOString(), tests: {} };
+  
+  try {
+    const azureMultiService = getAzureMultiService();
+    
+    // Test 1: Blob Storage
+    try {
+      const testBuffer = Buffer.from('test upload pipeline');
+      const filename = `test_${Date.now()}.txt`;
+      const blobResult = await azureMultiService.uploadToBlob(filename, testBuffer, 'text/plain');
+      results.tests.blobStorage = { status: 'OK', url: blobResult.url };
+    } catch (error) {
+      results.tests.blobStorage = { status: 'FAILED', error: error.message };
+    }
+    
+    // Test 2: Computer Vision (with a simple test image)
+    try {
+      // Create a 1x1 pixel PNG buffer
+      const pngBuffer = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+      await azureMultiService.analyzeImage(pngBuffer);
+      results.tests.computerVision = { status: 'OK' };
+    } catch (error) {
+      results.tests.computerVision = { status: 'FAILED', error: error.message };
+    }
+    
+    // Test 3: Document Intelligence
+    try {
+      const testPdf = Buffer.from('test document content');
+      await azureMultiService.analyzeDocument(testPdf, 'application/pdf');
+      results.tests.documentIntelligence = { status: 'OK' };
+    } catch (error) {
+      results.tests.documentIntelligence = { status: 'FAILED', error: error.message };
+    }
+    
+    // Test 4: Azure Search (if enabled)
+    try {
+      const searchService = require('./services/searchService');
+      await searchService.getSearchStatistics();
+      results.tests.azureSearch = { status: 'OK' };
+    } catch (error) {
+      results.tests.azureSearch = { status: 'FAILED', error: error.message };
+    }
+    
+    res.json(results);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Document Store Debug Endpoint
+app.get('/api/debug/documents', (req, res) => {
+  try {
+    const allDocs = documentStore.getAllDocuments();
+    res.json({
+      count: allDocs.length,
+      documents: allDocs.map(doc => ({
+        id: doc.id,
+        filename: doc.filename,
+        type: doc.contentType,
+        hasBlobUrl: !!doc.blobUrl,
+        hasContent: !!doc.content,
+        uploadedAt: doc.uploadedAt
+      }))
+    });
+  } catch (error) {
+    logger.error('Document store debug endpoint error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Cache statistics endpoint
+app.get('/api/cache/stats', (req, res) => {
+  const cacheService = require('./services/cacheService');
+  const stats = cacheService.getStats();
+  res.json(stats);
+});
+
+// Clear cache endpoint (for testing)
+app.post('/api/cache/clear', (req, res) => {
+  const cacheService = require('./services/cacheService');
+  cacheService.clearAll();
+  res.json({ message: 'Cache cleared successfully' });
 });
 
 // Error handling middleware
