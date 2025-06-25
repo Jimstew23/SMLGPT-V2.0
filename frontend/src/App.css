@@ -328,3 +328,38 @@ header .title {
   display: flex;
   flex-direction: column;
 }
+
+/* Icon toggle states */
+.icon-btn {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.icon-btn.active-mic {
+  color: #4ade80 !important; /* Green when recording */
+}
+
+.icon-btn.active-speaker {
+  color: #4ade80 !important; /* Green when auto-speak is on */
+}
+
+/* Upload progress container */
+.upload-progress-container {
+  position: fixed;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  max-width: 400px;
+  width: 90%;
+}
