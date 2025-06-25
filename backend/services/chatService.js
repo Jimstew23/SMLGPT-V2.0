@@ -393,7 +393,6 @@ Content: ${contentPreview}${imageInfo}`;
         // Try to get the blob directly using the Azure SDK first
         try {
           logger.info('Attempting to use Azure SDK to access blob');
-          const azureMultiService = require('./azureMultiService');
           
           // Extract container and blob name from URL
           const urlParts = new URL(blobUrl);
@@ -404,7 +403,7 @@ Content: ${contentPreview}${imageInfo}`;
           logger.info(`Parsed blob URL: container=${containerName}, blob=${blobName}`);
           
           // Get blob directly using Azure SDK
-          const containerClient = azureMultiService.blobServiceClient.getContainerClient(containerName);
+          const containerClient = azureServices.blobServiceClient.getContainerClient(containerName);
           const blobClient = containerClient.getBlobClient(blobName);
           
           // Download blob content
