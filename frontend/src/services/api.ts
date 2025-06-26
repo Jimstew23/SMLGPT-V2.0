@@ -67,38 +67,7 @@ class ApiService {
     return response.data;
   }
 
-  // File upload endpoints
-  async uploadFile(
-    file: File,
-    analysisType: 'safety' | 'general' = 'safety'
-  ): Promise<{
-    file_id: string;
-    filename: string;
-    stored_filename: string;
-    file_type: string;
-    mime_type: string;
-    file_size: number;
-    blob_url: string;
-    uploaded_at: string;
-    processing_time_ms: number;
-    analysis: any;
-    indexed: boolean;
-    status: string;
-    safety_analysis?: SafetyAnalysis;
-    upload_info?: any;
-  }> {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('analysis_type', analysisType);
-
-    const response = await this.api.post('/api/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
-  }
-
+  // File upload endpoints - CONSOLIDATED to eliminate duplicates
   async uploadFileWithProgress(
     file: File,
     analysisType: 'safety' | 'general' = 'safety',
@@ -134,6 +103,14 @@ class ApiService {
     });
     
     return response.data;
+  }
+
+  // Backward compatibility alias - eliminates duplicate function
+  async uploadFile(
+    file: File,
+    analysisType: 'safety' | 'general' = 'safety'
+  ) {
+    return this.uploadFileWithProgress(file, analysisType);
   }
 
   // Search endpoints

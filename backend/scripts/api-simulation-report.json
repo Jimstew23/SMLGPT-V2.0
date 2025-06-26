@@ -1,0 +1,71 @@
+{
+  "timestamp": "2025-06-26T13:12:33.280Z",
+  "summary": {
+    "health_ok": true,
+    "chat_ok": true,
+    "cors_ok": true,
+    "critical_issues": 1,
+    "warning_issues": 0
+  },
+  "detailed_results": {
+    "health_check": {
+      "status": 200,
+      "ok": true,
+      "response_time": 20,
+      "data": {
+        "status": "healthy",
+        "timestamp": "2025-06-26T13:12:27.411Z",
+        "version": "2.0.0",
+        "environment": "development"
+      }
+    },
+    "chat_endpoint": {
+      "status": 200,
+      "ok": true,
+      "response_time": 3884,
+      "has_response": true
+    },
+    "upload_endpoint": {
+      "error": "Request failed with status code 500"
+    },
+    "cors_test": {
+      "status": 204,
+      "ok": true,
+      "headers": {
+        "content-security-policy": "default-src 'self';style-src 'self' 'unsafe-inline';script-src 'self';img-src 'self' data: https:;base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';object-src 'none';script-src-attr 'none';upgrade-insecure-requests",
+        "cross-origin-opener-policy": "same-origin",
+        "cross-origin-resource-policy": "same-origin",
+        "origin-agent-cluster": "?1",
+        "referrer-policy": "no-referrer",
+        "strict-transport-security": "max-age=15552000; includeSubDomains",
+        "x-content-type-options": "nosniff",
+        "x-dns-prefetch-control": "off",
+        "x-download-options": "noopen",
+        "x-frame-options": "SAMEORIGIN",
+        "x-permitted-cross-domain-policies": "none",
+        "x-xss-protection": "0",
+        "x-ratelimit-limit": "100",
+        "x-ratelimit-remaining": "95",
+        "date": "Thu, 26 Jun 2025 13:12:32 GMT",
+        "x-ratelimit-reset": "1750944437",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin, Access-Control-Request-Headers",
+        "access-control-allow-credentials": "true",
+        "access-control-allow-methods": "GET,HEAD,PUT,PATCH,POST,DELETE",
+        "access-control-allow-headers": "Content-Type",
+        "content-length": "0",
+        "connection": "keep-alive",
+        "keep-alive": "timeout=5"
+      }
+    },
+    "timeout_test": {},
+    "error_patterns": [],
+    "recommendations": [
+      "🔴 CRITICAL: Upload endpoint broken - check file handling"
+    ]
+  },
+  "error_patterns": [],
+  "recommendations": [
+    "🔴 CRITICAL: Upload endpoint broken - check file handling"
+  ]
+}

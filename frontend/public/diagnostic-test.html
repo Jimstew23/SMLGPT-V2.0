@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMLGPT Frontend Diagnostic</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f0f0f0; }
+        .diagnostic { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .pass { color: #28a745; } .fail { color: #dc3545; } .warn { color: #ffc107; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+        .test-button { background: #007bff; color: white; }
+        .results { white-space: pre-wrap; font-family: monospace; background: #f8f9fa; padding: 15px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 SMLGPT Frontend Diagnostic Test</h1>
+    
+    <div class="diagnostic">
+        <h3>Quick Tests</h3>
+        <button class="test-button" onclick="runDiagnostic()">🚀 Run Full Diagnostic</button>
+        <button class="test-button" onclick="testAPIHandshake()">🤝 Test API Handshake</button>
+        <button class="test-button" onclick="testFileUpload()">📁 Test File Upload</button>
+        <button class="test-button" onclick="testSpeech()">🎤 Test Speech</button>
+    </div>
+
+    <div class="diagnostic">
+        <h3>Results:</h3>
+        <div id="results" class="results">Click a test button to see results...</div>
+    </div>
+
+    <script>
+        let diagnosticResults = {};
+
+        function log(message, level = 'info') {
+            const colors = { pass: '✅', fail: '❌', warn: '⚠️', info: '📝' };
+            const color = colors[level] || '📝';
+            const timestamp = new Date().toLocaleTimeString();
+            const formattedMessage = `[${timestamp}] ${color} ${message}`;
+            
+            console.log(formattedMessage);
+            
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.textContent += formattedMessage + '\n';
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        async function runDiagnostic() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.textContent = '';
+            
+            log('🔍 Starting Complete Frontend Diagnostic...', 'info');
+            
+            // Test 1: Check if we're on the right page
+            await testPageContext();
+            
+            // Test 2: Check API connectivity
+            await testAPIHandshake();
+            
+            // Test 3: Check UI components
+            await testUIComponents();
+            
+            // Test 4: Test file upload
+            await testFileUpload();
+            
+            // Test 5: Test speech functionality
+            await testSpeech();
+            
+            // Test 6: Test button states
+            await testButtonStates();
+            
+            log('🎉 Diagnostic complete! Check results above.', 'info');
+            
+            // Save results to window for manual inspection
+            window.diagnosticResults = diagnosticResults;
+            log('💾 Results saved to window.diagnosticResults', 'info');
+        }
+
+        async function testPageContext() {
+            log('Testing page context...', 'info');
+            
+            const isReactApp = !!document.querySelector('[data-reactroot], #root');
+            const hasCorrectTitle = document.title.includes('SMLGPT') || document.title.includes('React');
+            const currentURL = window.location.href;
+            
+            diagnosticResults.pageContext = {
+                isReactApp,
+                hasCorrectTitle,
+                currentURL,
+                userAgent: navigator.userAgent
+            };
+            
+            if (isReactApp) {
+                log('React app detected', 'pass');
+            } else {
+                log('React app NOT detected - may be wrong page', 'fail');
+            }
+            
+            log(`Current URL: ${currentURL}`, 'info');
+        }
+
+        async function testAPIHandshake() {
+            log('Testing API handshake...', 'info');
+            
+            try {
+                // Test health endpoint
+                const healthResponse = await fetch('http://localhost:5000/api/health', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const healthData = await healthResponse.json();
+                
+                diagnosticResults.apiHandshake = {
+                    health: {
+                        status: healthResponse.status,
+                        ok: healthResponse.ok,
+                        data: healthData
+                    }
+                };
+                
+                if (healthResponse.ok) {
+                    log(`API Health: ${healthResponse.status} - ${healthData.status}`, 'pass');
+                } else {
+                    log(`API Health FAILED: ${healthResponse.status}`, 'fail');
+                }
+                
+                // Test chat endpoint
+                const chatResponse = await fetch('http://localhost:5000/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: 'Diagnostic test',
+                        conversation_history: [],
+                        include_context: false
+                    })
+                });
+                
+                diagnosticResults.apiHandshake.chat = {
+                    status: chatResponse.status,
+                    ok: chatResponse.ok
+                };
+                
+                if (chatResponse.ok) {
+                    log(`Chat API: ${chatResponse.status} - Working`, 'pass');
+                } else {
+                    log(`Chat API FAILED: ${chatResponse.status}`, 'fail');
+                }
+                
+            } catch (error) {
+                log(`API Handshake ERROR: ${error.message}`, 'fail');
+                diagnosticResults.apiHandshake = { error: error.message };
+            }
+        }
+
+        async function testUIComponents() {
+            log('Testing UI components...', 'info');
+            
+            const components = {
+                chatInput: 'input[placeholder*="message"], input[type="text"]',
+                sendButton: 'button[type="submit"], button[aria-label*="send"]',
+                fileInput: 'input[type="file"]',
+                microphoneButton: '[data-testid*="mic"], button[aria-label*="micro"], button[title*="micro"]',
+                uploadArea: '.upload-area, .drop-zone, [data-testid*="upload"]'
+            };
+            
+            diagnosticResults.uiComponents = {};
+            
+            for (const [name, selector] of Object.entries(components)) {
+                const element = document.querySelector(selector);
+                const found = !!element;
+                
+                diagnosticResults.uiComponents[name] = {
+                    found,
+                    selector,
+                    element: found ? {
+                        tagName: element.tagName,
+                        className: element.className,
+                        disabled: element.disabled,
+                        id: element.id
+                    } : null
+                };
+                
+                if (found) {
+                    log(`${name}: Found (${element.tagName}.${element.className})`, 'pass');
+                } else {
+                    log(`${name}: NOT FOUND`, 'fail');
+                }
+            }
+        }
+
+        async function testFileUpload() {
+            log('Testing file upload functionality...', 'info');
+            
+            const fileInput = document.querySelector('input[type="file"]');
+            
+            if (!fileInput) {
+                log('File input not found - cannot test upload', 'fail');
+                diagnosticResults.fileUpload = { error: 'File input not found' };
+                return;
+            }
+            
+            log('File input found, testing upload simulation...', 'info');
+            
+            // Create a mock file
+            const mockFile = new File(['test content'], 'test.txt', { type: 'text/plain' });
+            
+            // Create a DataTransfer to simulate file selection
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(mockFile);
+            
+            // Assign the files to the input
+            fileInput.files = dataTransfer.files;
+            
+            // Trigger change event
+            const changeEvent = new Event('change', { bubbles: true });
+            fileInput.dispatchEvent(changeEvent);
+            
+            log('File selection simulated', 'info');
+            
+            // Check if any upload indicators appear
+            setTimeout(() => {
+                const uploadIndicators = document.querySelectorAll('.upload-progress, .spinner, .loading, [data-testid*="upload"]');
+                
+                diagnosticResults.fileUpload = {
+                    fileInputFound: true,
+                    fileSelected: fileInput.files.length > 0,
+                    uploadIndicators: uploadIndicators.length,
+                    indicatorElements: Array.from(uploadIndicators).map(el => el.className)
+                };
+                
+                if (uploadIndicators.length > 0) {
+                    log(`Upload indicators found: ${uploadIndicators.length}`, 'pass');
+                } else {
+                    log('No upload indicators found - UI may not be responding', 'warn');
+                }
+            }, 1000);
+        }
+
+        async function testSpeech() {
+            log('Testing speech functionality...', 'info');
+            
+            // Look for microphone button
+            const micSelectors = [
+                '[data-testid*="mic"]',
+                'button[aria-label*="micro"]',
+                'button[title*="micro"]',
+                '.mic-button',
+                '.microphone-button'
+            ];
+            
+            let micButton = null;
+            let foundSelector = null;
+            
+            for (const selector of micSelectors) {
+                micButton = document.querySelector(selector);
+                if (micButton) {
+                    foundSelector = selector;
+                    break;
+                }
+            }
+            
+            if (!micButton) {
+                log('Microphone button not found', 'fail');
+                diagnosticResults.speech = { error: 'Microphone button not found' };
+                return;
+            }
+            
+            log(`Microphone button found with selector: ${foundSelector}`, 'pass');
+            
+            // Test button state
+            const initialState = {
+                disabled: micButton.disabled,
+                className: micButton.className,
+                ariaLabel: micButton.getAttribute('aria-label'),
+                innerHTML: micButton.innerHTML
+            };
+            
+            log(`Initial mic button state: disabled=${initialState.disabled}`, 'info');
+            
+            // Try clicking the button
+            try {
+                micButton.click();
+                log('Microphone button clicked', 'info');
+                
+                // Check state after click
+                setTimeout(() => {
+                    const afterClickState = {
+                        disabled: micButton.disabled,
+                        className: micButton.className,
+                        ariaLabel: micButton.getAttribute('aria-label'),
+                        innerHTML: micButton.innerHTML
+                    };
+                    
+                    const stateChanged = JSON.stringify(initialState) !== JSON.stringify(afterClickState);
+                    
+                    diagnosticResults.speech = {
+                        micButtonFound: true,
+                        foundSelector,
+                        initialState,
+                        afterClickState,
+                        stateChanged,
+                        clickable: !initialState.disabled
+                    };
+                    
+                    if (stateChanged) {
+                        log('Microphone button state changed after click', 'pass');
+                    } else {
+                        log('Microphone button state DID NOT change after click', 'fail');
+                    }
+                }, 1000);
+                
+            } catch (error) {
+                log(`Error clicking microphone button: ${error.message}`, 'fail');
+                diagnosticResults.speech = { error: error.message };
+            }
+        }
+
+        async function testButtonStates() {
+            log('Testing button states and interactions...', 'info');
+            
+            const buttons = document.querySelectorAll('button');
+            
+            diagnosticResults.buttonStates = {
+                totalButtons: buttons.length,
+                buttonDetails: []
+            };
+            
+            log(`Found ${buttons.length} buttons total`, 'info');
+            
+            buttons.forEach((button, index) => {
+                const buttonInfo = {
+                    index,
+                    tagName: button.tagName,
+                    type: button.type,
+                    disabled: button.disabled,
+                    className: button.className,
+                    id: button.id,
+                    innerHTML: button.innerHTML.substring(0, 50),
+                    ariaLabel: button.getAttribute('aria-label')
+                };
+                
+                diagnosticResults.buttonStates.buttonDetails.push(buttonInfo);
+                
+                log(`Button ${index}: ${buttonInfo.type || 'button'} ${buttonInfo.disabled ? '(disabled)' : '(enabled)'} - ${buttonInfo.className}`, 'info');
+            });
+        }
+
+        // Auto-run on page load
+        window.addEventListener('load', () => {
+            log('🔧 Diagnostic tool loaded. Click "Run Full Diagnostic" to start testing.', 'info');
+        });
+    </script>
+</body>
+</html>

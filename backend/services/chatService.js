@@ -372,68 +372,12 @@ Content: ${contentPreview}${imageInfo}`;
         throw new Error(`Invalid blob URL format: ${blobUrl}`);
       }
 
-      // Check if this is an Azure Blob URL and handle SAS token if needed
+      // Check if this is an Azure Blob URL - no SAS token needed when using connection string
       if (blobUrl.includes('.blob.core.windows.net')) {
-        // Define the SAS token - use environment variable
-        const sasToken = process.env.AZURE_BLOB_SAS_TOKEN;
-        
-        if (!sasToken) {
-          logger.error('AZURE_BLOB_SAS_TOKEN environment variable not set');
-          throw new Error('SAS token not configured');
-        }
-        
-        // If URL doesn't have authentication parameters, append SAS token
-        if (!blobUrl.includes('?')) {
-          const originalUrl = blobUrl;
-          blobUrl = `${blobUrl}?${sasToken}`;
-          logger.info('Added SAS token to blob URL', {
-            originalUrl,
-            newUrlLength: blobUrl.length
-          });
-        }
-        
-        // Try to get the blob directly using the Azure SDK first
-        try {
-          logger.info('Attempting to use Azure SDK to access blob');
-          
-          // Extract container and blob name from URL
-          const urlParts = new URL(blobUrl);
-          const pathParts = urlParts.pathname.split('/');
-          const containerName = pathParts[1]; // First part after domain
-          const blobName = pathParts.slice(2).join('/'); // Rest is blob path
-          
-          logger.info(`Parsed blob URL: container=${containerName}, blob=${blobName}`);
-          
-          // Get blob directly using Azure SDK
-          const containerClient = azureServices.blobServiceClient.getContainerClient(containerName);
-          const blobClient = containerClient.getBlobClient(blobName);
-          
-          // Download blob content
-          const downloadResponse = await blobClient.download();
-          const chunks = [];
-          
-          // Process chunks from download stream
-          for await (const chunk of downloadResponse.readableStreamBody) {
-            chunks.push(chunk);
-          }
-          
-          // Combine chunks into a buffer
-          const imageBuffer = Buffer.concat(chunks);
-          
-          logger.info('Successfully fetched image using Azure SDK', {
-            blobUrl: blobUrl.substring(0, blobUrl.indexOf('?') > 0 ? blobUrl.indexOf('?') : blobUrl.length),
-            imageSize: imageBuffer.length,
-            method: 'Azure SDK'
-          });
-          
-          return imageBuffer;
-        } catch (azureError) {
-          logger.warn('Failed to fetch using Azure SDK, falling back to HTTP fetch', { 
-            error: azureError.message,
-            blobUrl: blobUrl.substring(0, blobUrl.indexOf('?') > 0 ? blobUrl.indexOf('?') : blobUrl.length)
-          });
-          // Continue with regular fetch as fallback
-        }
+        // Use the blob URL directly - azureServices handles authentication via connection string
+        logger.info('Using Azure Blob URL with connection string authentication', {
+          url: blobUrl.substring(0, 50) + '...'
+        });
       }
 
       // Use a longer timeout to ensure large images can be fetched

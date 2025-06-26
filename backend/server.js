@@ -56,12 +56,34 @@ const upload = multer({
     fileSize: 50 * 1024 * 1024, // 50MB
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 
-                         'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    // DEBUG: Log the actual MIME type being detected
+    logger.info('File filter check:', {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      fieldname: file.fieldname,
+      encoding: file.encoding
+    });
+    
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp', 'image/webp',
+                         'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                         'audio/wav', 'audio/mpeg', 'audio/mp3', 'audio/ogg', 'audio/webm', 'audio/x-wav',
+                         'audio/wave', 'audio/x-wave', 'audio/vnd.wave', 'application/octet-stream'];
+    
+    logger.info('Checking against allowed types:', { 
+      mimetype: file.mimetype, 
+      isAllowed: allowedTypes.includes(file.mimetype),
+      allowedTypes 
+    });
+    
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only images, PDF, and DOCX files are allowed.'), false);
+      logger.error('File type rejected:', { 
+        mimetype: file.mimetype, 
+        filename: file.originalname,
+        allowedTypes 
+      });
+      cb(new Error('Invalid file type. Only images, PDF, DOCX, and audio files are allowed.'), false);
     }
   },
 });
@@ -171,6 +193,15 @@ app.post('/api/speech/recognize', upload.single('audio'), async (req, res) => {
 // Text-to-speech endpoint
 app.post('/api/speech/synthesize', async (req, res) => {
   try {
+    // DEBUG LOGGING
+    logger.info('=== TTS REQUEST DEBUG ===', {
+      hasBody: !!req.body,
+      bodyKeys: req.body ? Object.keys(req.body) : [],
+      text: req.body?.text,
+      contentType: req.headers['content-type'],
+      bodyJson: JSON.stringify(req.body)
+    });
+    
     const { text, voice = 'en-US-AriaNeural' } = req.body;
     
     if (!text) {

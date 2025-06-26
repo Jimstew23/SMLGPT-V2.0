@@ -1,0 +1,88 @@
+
+SMLGPT V2.0 Speech Functionality Test Results
+============================================
+Test Date: 2025-06-26T04:18:26.123Z
+Total Test Duration: 17119ms
+
+[2025-06-26T04:18:09.004Z] 🎤 SMLGPT V2.0 Speech Functionality Test Suite
+[2025-06-26T04:18:09.005Z] ================================================
+[2025-06-26T04:18:09.006Z] 
+🏥 Checking API health...
+[2025-06-26T04:18:09.032Z] ✅ API Status: healthy
+[2025-06-26T04:18:09.032Z] 
+🔍 Testing Speech API Endpoints...
+[2025-06-26T04:18:09.032Z] ==================================================
+[2025-06-26T04:18:09.032Z] 
+📡 Testing Text-to-Speech endpoint...
+[2025-06-26T04:18:09.040Z] 📊 Text-to-Speech: HTTP 400
+[2025-06-26T04:18:09.041Z] 📄 Response: {"error":"Text is required"}...
+[2025-06-26T04:18:09.041Z] 
+📡 Testing Speech-to-Text endpoint...
+[2025-06-26T04:18:09.042Z] 📊 Speech-to-Text: HTTP 400
+[2025-06-26T04:18:09.042Z] 📄 Response: {"error":"No audio file provided"}...
+[2025-06-26T04:18:09.043Z] 
+🔊 Testing Text-to-Speech...
+[2025-06-26T04:18:09.043Z] ==================================================
+[2025-06-26T04:18:09.043Z] 
+📋 Test Case: Basic Safety Alert
+[2025-06-26T04:18:09.043Z] Text: "STOP! Safety hazard detected. Please wear your safety equipment."
+[2025-06-26T04:18:09.043Z] Voice: en-US-AriaNeural
+[2025-06-26T04:18:09.043Z] --------------------------------------------------
+[2025-06-26T04:18:11.257Z] ✅ Text-to-Speech completed in 2213ms
+[2025-06-26T04:18:11.257Z] 📁 Audio saved: C:\Users\jimst\Desktop\SMLGPT\smlgpt-v2\backend\scripts\test-audio-basic-safety-alert.wav
+[2025-06-26T04:18:11.257Z] 📊 Audio size: 206044 bytes
+[2025-06-26T04:18:11.257Z] ✅ Audio file appears valid (206044 bytes)
+[2025-06-26T04:18:11.257Z] 
+📋 Test Case: Technical Instructions
+[2025-06-26T04:18:11.257Z] Text: "Please follow lockout tagout procedures before proceeding with maintenance."
+[2025-06-26T04:18:11.257Z] Voice: en-US-JennyNeural
+[2025-06-26T04:18:11.257Z] --------------------------------------------------
+[2025-06-26T04:18:13.033Z] ✅ Text-to-Speech completed in 1775ms
+[2025-06-26T04:18:13.033Z] 📁 Audio saved: C:\Users\jimst\Desktop\SMLGPT\smlgpt-v2\backend\scripts\test-audio-technical-instructions.wav
+[2025-06-26T04:18:13.033Z] 📊 Audio size: 146444 bytes
+[2025-06-26T04:18:13.033Z] ✅ Audio file appears valid (146444 bytes)
+[2025-06-26T04:18:13.033Z] 
+📋 Test Case: Emergency Alert
+[2025-06-26T04:18:13.033Z] Text: "Emergency evacuation required. Proceed to nearest exit immediately."
+[2025-06-26T04:18:13.033Z] Voice: en-US-GuyNeural
+[2025-06-26T04:18:13.033Z] --------------------------------------------------
+[2025-06-26T04:18:15.075Z] ✅ Text-to-Speech completed in 2041ms
+[2025-06-26T04:18:15.075Z] 📁 Audio saved: C:\Users\jimst\Desktop\SMLGPT\smlgpt-v2\backend\scripts\test-audio-emergency-alert.wav
+[2025-06-26T04:18:15.075Z] 📊 Audio size: 194444 bytes
+[2025-06-26T04:18:15.075Z] ✅ Audio file appears valid (194444 bytes)
+[2025-06-26T04:18:15.075Z] 
+🎙️ Testing Speech-to-Text...
+[2025-06-26T04:18:15.076Z] ==================================================
+[2025-06-26T04:18:15.076Z] 
+📤 Creating test audio file...
+[2025-06-26T04:18:16.842Z] ✅ Test audio created: C:\Users\jimst\Desktop\SMLGPT\smlgpt-v2\backend\scripts\test-speech-recognition.wav
+[2025-06-26T04:18:16.842Z] 
+🎯 Testing Speech Recognition...
+[2025-06-26T04:18:19.252Z] ✅ Speech-to-Text completed in 2409ms
+[2025-06-26T04:18:19.252Z] 📝 Original text: "This is a test of speech recognition functionality for safety compliance."
+[2025-06-26T04:18:19.252Z] 🎯 Recognized text: "This is a test of speech recognition functionality for safety compliance."
+[2025-06-26T04:18:19.253Z] 📊 Accuracy: 100.0%
+[2025-06-26T04:18:19.253Z] 
+🎭 Testing Voice Selection...
+[2025-06-26T04:18:19.253Z] ==================================================
+[2025-06-26T04:18:19.253Z] 
+🎤 Testing voice: en-US-AriaNeural
+[2025-06-26T04:18:20.522Z] ✅ Voice en-US-AriaNeural: 1269ms, 106444 bytes
+[2025-06-26T04:18:20.522Z] 
+🎤 Testing voice: en-US-JennyNeural
+[2025-06-26T04:18:21.502Z] ✅ Voice en-US-JennyNeural: 980ms, 102044 bytes
+[2025-06-26T04:18:21.502Z] 
+🎤 Testing voice: en-US-GuyNeural
+[2025-06-26T04:18:22.846Z] ✅ Voice en-US-GuyNeural: 1343ms, 102844 bytes
+[2025-06-26T04:18:22.846Z] 
+🎤 Testing voice: en-US-AnaNeural
+[2025-06-26T04:18:24.058Z] ✅ Voice en-US-AnaNeural: 1212ms, 119644 bytes
+[2025-06-26T04:18:24.058Z] 
+🎤 Testing voice: en-US-ChristopherNeural
+[2025-06-26T04:18:25.090Z] ✅ Voice en-US-ChristopherNeural: 1032ms, 106844 bytes
+[2025-06-26T04:18:25.090Z] 
+🎤 Testing voice: en-US-ElizabethNeural
+[2025-06-26T04:18:26.123Z] ✅ Voice en-US-ElizabethNeural: 1033ms, 104444 bytes
+
+============================================
+Test Summary Complete

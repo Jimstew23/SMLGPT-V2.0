@@ -53,6 +53,11 @@ class AzureServices {
         process.env.AZURE_SPEECH_REGION
       );
 
+      // Use custom speech endpoint if provided (similar to other Azure services)
+      if (process.env.AZURE_SPEECH_ENDPOINT) {
+        this.speechConfig.endpoint = process.env.AZURE_SPEECH_ENDPOINT;
+      }
+
       this.servicesReady = true;
       logger.info('✅ All Azure services initialized with dedicated endpoints');
     } catch (error) {
@@ -274,16 +279,45 @@ class AzureServices {
     
     return new Promise((resolve, reject) => {
       this.speechConfig.speechSynthesisVoiceName = voice;
-      const synthesizer = new sdk.SpeechSynthesizer(this.speechConfig);
+      
+      // Configure audio output to null (in-memory) to capture audio data
+      const audioConfig = sdk.AudioConfig.fromDefaultSpeakerOutput();
+      // Actually, we want to capture the audio data, so use null output
+      const synthesizer = new sdk.SpeechSynthesizer(this.speechConfig, null);
       
       synthesizer.speakTextAsync(
         text,
         (result) => {
-          const audioBuffer = Buffer.from(result.audioData);
-          synthesizer.close();
-          resolve(audioBuffer);
+          // DEBUG LOGGING - Check what's actually in the result
+          logger.info('=== TTS RESULT DEBUG ===', {
+            reason: result.reason,
+            hasAudioData: !!result.audioData,
+            audioDataType: typeof result.audioData,
+            audioDataLength: result.audioData ? result.audioData.length : 0,
+            audioDataByteLength: result.audioData ? result.audioData.byteLength : 0,
+            resultKeys: Object.keys(result),
+            reasonText: result.reason === sdk.ResultReason.SynthesizingAudioCompleted ? 'SynthesizingAudioCompleted' : 'Other'
+          });
+          
+          if (result.reason === sdk.ResultReason.SynthesizingAudioCompleted) {
+            // Convert ArrayBuffer to Buffer for Node.js
+            const audioBuffer = Buffer.from(result.audioData);
+            logger.info('Audio buffer created', { bufferLength: audioBuffer.length });
+            synthesizer.close();
+            resolve(audioBuffer);
+          } else if (result.reason === sdk.ResultReason.Canceled) {
+            const cancellationDetails = sdk.CancellationDetails.fromResult(result);
+            logger.error('Text-to-speech failed:', cancellationDetails.errorDetails);
+            synthesizer.close();
+            reject(new Error(`Text-to-speech failed: ${cancellationDetails.errorDetails}`));
+          } else {
+            logger.error('Text-to-speech failed:', result);
+            synthesizer.close();
+            reject(new Error(`Text-to-speech failed: ${result}`));
+          }
         },
         (error) => {
+          logger.error('Text-to-speech failed:', error);
           synthesizer.close();
           reject(error);
         }

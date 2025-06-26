@@ -1,0 +1,245 @@
+{
+  "timestamp": "2025-06-26T13:13:34.207Z",
+  "summary": {
+    "ui_components_found": 2,
+    "upload_functional": false,
+    "speech_functional": false,
+    "api_responsive": true
+  },
+  "detailed_results": {
+    "ui_interactions": {
+      "chatInput": "missing",
+      "sendButton": "found",
+      "fileInput": "found",
+      "microphoneButton": "missing",
+      "error": "No element found for selector: input[placeholder*=\"message\"]"
+    },
+    "upload_tests": {
+      "error": "this.page.waitForTimeout is not a function"
+    },
+    "speech_tests": {
+      "error": "this.page.waitForTimeout is not a function"
+    },
+    "button_states": {},
+    "handshakes": {
+      "health": {
+        "status": 200,
+        "ok": true,
+        "data": {
+          "status": "healthy",
+          "timestamp": "2025-06-26T13:13:31.342Z",
+          "version": "2.0.0",
+          "environment": "development"
+        }
+      },
+      "chat": {
+        "status": 200,
+        "ok": true,
+        "data": "{\"response\":\"Handshake received! 👋\\n\\nSMLGPT is online and ready to assist with hazard identification, risk assessment, and SML control recommendations per the Georgia-Pacific 2025 SML Compliance Standard.\\n\\nHow can I help you today? If you have a scenario, document, or question, please provide details and I’ll guide you through the appropriate safety analysis and controls.\",\"conversation_id\":\"conv_1750943614202_a571nln9z\",\"timestamp\":\"2025-06-26T13:13:34.202Z\",\"context_used\":false,\"processing_time_ms\":2846,\"model_used\":\"gpt-4.1\"}"
+      }
+    },
+    "console_errors": [
+      {
+        "type": "info",
+        "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold",
+        "timestamp": "2025-06-26T13:13:18.601Z"
+      },
+      {
+        "type": "log",
+        "text": "[HybridSpeech] Speech initialization JSHandle@object",
+        "timestamp": "2025-06-26T13:13:18.639Z"
+      },
+      {
+        "type": "log",
+        "text": "🔊 Azure Speech: Initializing with key=AH4c..., region=eastus2 ",
+        "timestamp": "2025-06-26T13:13:18.640Z"
+      },
+      {
+        "type": "log",
+        "text": "🔊 Azure Speech: Creating speech config ",
+        "timestamp": "2025-06-26T13:13:18.640Z"
+      },
+      {
+        "type": "log",
+        "text": "🔊 Azure Speech: Creating speech recognizer ",
+        "timestamp": "2025-06-26T13:13:18.640Z"
+      },
+      {
+        "type": "log",
+        "text": "🔊 Azure Speech: Speech recognizer created and configured ",
+        "timestamp": "2025-06-26T13:13:18.641Z"
+      },
+      {
+        "type": "log",
+        "text": "[HybridSpeech] Initializing speech recognition ",
+        "timestamp": "2025-06-26T13:13:20.583Z"
+      },
+      {
+        "type": "log",
+        "text": "[HybridSpeech] Cleaning up speech recognition ",
+        "timestamp": "2025-06-26T13:13:20.583Z"
+      },
+      {
+        "type": "log",
+        "text": "[HybridSpeech] Speech initialization JSHandle@object",
+        "timestamp": "2025-06-26T13:13:20.583Z"
+      },
+      {
+        "type": "log",
+        "text": "🔊 Azure Speech: Initializing with key=AH4c..., region=eastus2 ",
+        "timestamp": "2025-06-26T13:13:20.584Z"
+      },
+      {
+        "type": "log",
+        "text": "🔊 Azure Speech: Creating speech config ",
+        "timestamp": "2025-06-26T13:13:20.584Z"
+      },
+      {
+        "type": "log",
+        "text": "🔊 Azure Speech: Creating speech recognizer ",
+        "timestamp": "2025-06-26T13:13:20.584Z"
+      },
+      {
+        "type": "log",
+        "text": "🔊 Azure Speech: Speech recognizer created and configured ",
+        "timestamp": "2025-06-26T13:13:20.585Z"
+      },
+      {
+        "type": "log",
+        "text": "[HybridSpeech] Initializing speech recognition ",
+        "timestamp": "2025-06-26T13:13:20.585Z"
+      },
+      {
+        "type": "log",
+        "text": "🔧 API Request: GET http://localhost:5000/api/health",
+        "timestamp": "2025-06-26T13:13:20.587Z"
+      },
+      {
+        "type": "log",
+        "text": "🔧 Full URL: http://localhost:5000/api/health",
+        "timestamp": "2025-06-26T13:13:20.587Z"
+      },
+      {
+        "type": "log",
+        "text": "🔧 Headers: JSHandle@object",
+        "timestamp": "2025-06-26T13:13:20.587Z"
+      },
+      {
+        "type": "log",
+        "text": "🔧 API Request: GET http://localhost:5000/api/health",
+        "timestamp": "2025-06-26T13:13:20.588Z"
+      },
+      {
+        "type": "log",
+        "text": "🔧 Full URL: http://localhost:5000/api/health",
+        "timestamp": "2025-06-26T13:13:20.588Z"
+      },
+      {
+        "type": "log",
+        "text": "🔧 Headers: JSHandle@object",
+        "timestamp": "2025-06-26T13:13:20.589Z"
+      },
+      {
+        "type": "log",
+        "text": "[HybridSpeech] Microphone permission status: prompt ",
+        "timestamp": "2025-06-26T13:13:20.686Z"
+      },
+      {
+        "type": "log",
+        "text": "[HybridSpeech] Has microphone permissions: false ",
+        "timestamp": "2025-06-26T13:13:20.687Z"
+      },
+      {
+        "type": "log",
+        "text": "[HybridSpeech] Speech recognition initialized successfully ",
+        "timestamp": "2025-06-26T13:13:20.687Z"
+      },
+      {
+        "type": "log",
+        "text": "🔊 Azure Speech: Speech recognizer ready for use ",
+        "timestamp": "2025-06-26T13:13:20.691Z"
+      },
+      {
+        "type": "log",
+        "text": "API Response: 200 /api/health",
+        "timestamp": "2025-06-26T13:13:20.693Z"
+      },
+      {
+        "type": "log",
+        "text": "API Response: 200 /api/health",
+        "timestamp": "2025-06-26T13:13:20.694Z"
+      },
+      {
+        "type": "log",
+        "text": "[HybridSpeech] Microphone permission status: prompt ",
+        "timestamp": "2025-06-26T13:13:20.696Z"
+      },
+      {
+        "type": "log",
+        "text": "[HybridSpeech] Has microphone permissions: false ",
+        "timestamp": "2025-06-26T13:13:20.696Z"
+      },
+      {
+        "type": "log",
+        "text": "[HybridSpeech] Speech recognition initialized successfully ",
+        "timestamp": "2025-06-26T13:13:20.697Z"
+      },
+      {
+        "type": "error",
+        "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "timestamp": "2025-06-26T13:13:20.821Z"
+      },
+      {
+        "type": "log",
+        "text": "🔊 Azure Speech: Speech recognizer ready for use ",
+        "timestamp": "2025-06-26T13:13:21.095Z"
+      },
+      {
+        "type": "log",
+        "text": "Centralized file type detection: JSHandle@object",
+        "timestamp": "2025-06-26T13:13:31.306Z"
+      },
+      {
+        "type": "log",
+        "text": "Centralized file type detection: JSHandle@object",
+        "timestamp": "2025-06-26T13:13:31.306Z"
+      },
+      {
+        "type": "log",
+        "text": "🔧 API Request: POST http://localhost:5000/api/upload",
+        "timestamp": "2025-06-26T13:13:31.307Z"
+      },
+      {
+        "type": "log",
+        "text": "🔧 Full URL: http://localhost:5000/api/upload",
+        "timestamp": "2025-06-26T13:13:31.307Z"
+      },
+      {
+        "type": "log",
+        "text": "🔧 Headers: JSHandle@object",
+        "timestamp": "2025-06-26T13:13:31.307Z"
+      },
+      {
+        "type": "error",
+        "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "timestamp": "2025-06-26T13:13:31.788Z"
+      },
+      {
+        "type": "error",
+        "text": "API Response Error: JSHandle@object",
+        "timestamp": "2025-06-26T13:13:31.789Z"
+      },
+      {
+        "type": "error",
+        "text": "Error uploading files: JSHandle@object",
+        "timestamp": "2025-06-26T13:13:31.789Z"
+      }
+    ]
+  },
+  "recommendations": [
+    "UI components missing - check component rendering",
+    "File upload not working - check FormData and backend endpoint",
+    "Speech functionality not working - check microphone permissions and state management",
+    "Console errors present - check browser console for details"
+  ]
+}
